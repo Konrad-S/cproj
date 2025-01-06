@@ -1,0 +1,14 @@
+{
+	"folders":
+	[
+		{
+			"path": "source",
+		},
+		{
+			"path": "dependencies\\glad\\include",
+		},
+		{
+			"path": "dependencies\\glfw-3.4\\include"
+		},
+	],
+}
