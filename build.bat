@@ -1,4 +1,5 @@
 @echo off
+@if not exist "build" mkdir "build"
 set sources=source\main.cpp dependencies\glad\src\glad.c
 set compiler_options=/MD
 set includes=/I"dependencies\glad\include" /I"dependencies/glfw-3.4/include"

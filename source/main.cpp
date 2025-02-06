@@ -4,11 +4,17 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
+struct {
+    int posx;
+    int posy;
+} global_player;
+
 const char* vertex_shader_source = 
 "#version 330 core\n"
 "layout (location = 0) in vec3 aPos;\n"
+"uniform vec2 offset;"
 "void main() {\n"
-"   gl_Position = vec4(aPos, 1.0);\n"
+"   gl_Position = vec4(aPos + vec3(offset, 0), 1.0);\n"
 "}\n";
 
 const char* fragment_shader_source = 
@@ -25,8 +31,16 @@ void error_callback(int error, const char* description) {
 
 // Key callback function
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, 1); // Close on ESC key
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+    }
+    switch (key) {
+    if (action != GLFW_PRESS) return;
+    case GLFW_KEY_ESCAPE:
+        glfwSetWindowShouldClose(window, 1);
+    case GLFW_KEY_W:
+        global_player.posx += 1;
+
+    }
 }
 
 int main(void) {
@@ -35,6 +49,9 @@ int main(void) {
         fprintf(stderr, "Failed to initialize GLFW\n");
         return -1;
     }
+
+    global_player.posx = 0;
+    global_player.posy = 0;
 
     // Set error callback
     glfwSetErrorCallback(error_callback);
@@ -74,9 +91,12 @@ int main(void) {
     glBindVertexArray(VAO);
 
     float vertices[] = {
-         0.0f,  0.5f, 0.0f,
         -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f
+         0.5f, -0.5f, 0.0f,
+         0.5f,  0.5f, 0.0f,
+        -0.5f, -0.5f, 0.0f,
+         0.5f,  0.5f, 0.0f,
+        -0.5f,  0.5f, 0.0f
     };
     unsigned int VBO;
     glGenBuffers(1, &VBO);
@@ -105,16 +125,18 @@ int main(void) {
 
     glUseProgram(shaderProgram);
 
-
+    float i = 0.0f;
+    GLuint offset_location = glGetUniformLocation(shaderProgram, "offset");
     // Render loop
     while (!glfwWindowShouldClose(window)) {
         // Clear the screen
         float time = glfwGetTime();
-        glClearColor(.2f, .5f, sin(time), 1.0f);
+        glClearColor(.2f, .5f, (float)global_player.posx / 255, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glUniform2f(offset_location, global_player.posx / 100.0f, 0);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
