@@ -4,10 +4,12 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-struct {
+struct Player {
     int posx;
     int posy;
-} global_player;
+};
+
+Player global_player;
 
 const char* vertex_shader_source = 
 "#version 330 core\n"
