@@ -1,0 +1,5 @@
+arena allocation
+    arenas are defined by their lifetimes
+    i should have one persistent and one transient, and maybe others
+        transient is wiped (current pos set to 0) each frame
+        "double-buffer" frame arena, alternatve between two arenas, to have access to last frame

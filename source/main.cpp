@@ -1,12 +1,28 @@
 #include <cstdio>
 #include <math.h>
+#include <windows.h>
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
+typedef char      int8;
+typedef short     int16;
+typedef long      int32;
+typedef long long int64;
+typedef unsigned char      uint8;
+typedef unsigned short     uint16;
+typedef unsigned long      uint32;
+typedef unsigned long long uint64;
+
 struct Player {
     int posx;
     int posy;
+};
+
+struct Arena {
+    uint8* data;
+    uint64 current;
+    uint64 capacity;
 };
 
 Player global_player;
@@ -45,7 +61,22 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
+uint32 read_entire_file_txt (Arena* arena, const char* file) {
+    HANDLE handle = CreateFile(file,
+                               GENERIC_READ,
+                               FILE_SHARE_READ,
+                               NULL,
+                               OPEN_EXISTING,
+                               FILE_ATTRIBUTE_NORMAL,
+                               NULL);
+
+    DWORD bytes_read;
+    bool success = ReadFile(handle, arena->data, arena->capacity - arena->current, &bytes_read, NULL);
+    return bytes_read;
+}
+
 int main(void) {
+    printf("%d", (int)sizeof(uint8));
     // Initialize GLFW
     if (!glfwInit()) {
         fprintf(stderr, "Failed to initialize GLFW\n");
@@ -109,7 +140,14 @@ int main(void) {
     glEnableVertexAttribArray(0);
 
     unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_shader_source, NULL);
+
+    Arena arena;
+    arena.data = (uint8*)malloc(2*1024);// allocate 2 megabyte (not very much)
+    arena.capacity = 2*1024;
+    arena.current = 0;
+    uint32 start_of_shader_text = arena.current;
+    uint32 bytes_read = read_entire_file_txt(&arena, "../assets/vertex.txt");
+    glShaderSource(vertex_shader, 1, arena.data + start_of_shader_text, (GLint*)&bytes_read);
     glCompileShader(vertex_shader);
 
     unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);

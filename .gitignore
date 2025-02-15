@@ -1,3 +1,5 @@
 *.lnk
 *.sublime-workspace
 /build
+*.pdb
+*.rdbg
