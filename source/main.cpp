@@ -25,7 +25,10 @@ struct Arena {
     uint64 capacity;
 };
 
-Player global_player;
+struct Frame_Info {
+    Player player;
+    bool move_key_pressed;
+};
 
 // Error callback function
 void error_callback(int error, const char* description) {
@@ -40,10 +43,12 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     if (action != GLFW_PRESS) return;
     case GLFW_KEY_ESCAPE:
         glfwSetWindowShouldClose(window, 1);
-    case GLFW_KEY_W:
-        global_player.posx += 1;
-
     }
+}
+
+void clear_arena(Arena* arena) {
+    memset(arena->data, 0, arena->capacity);
+    arena->current = 0;
 }
 
 uint32 read_entire_file_txt (Arena* arena, const char* file_path) {
@@ -70,15 +75,30 @@ uint32 read_entire_file_txt (Arena* arena, const char* file_path) {
     return bytes_read;
 }
 
+bool get_updated_input(GLFWwindow* window, bool last_input) {
+    // Last input will be needed when input handling is more robust, e.g. held vs pressed.
+    int state = glfwGetKey(window, GLFW_KEY_W);
+    if (state == GLFW_PRESS) {
+        return true;
+    }
+    return false;
+}
+
+Player get_updated_player(Player last_player, bool moved) {
+    Player player = last_player;
+    if (moved) {
+        player.posx += 1;
+    }
+    return player;
+}
+
+
 int main(void) {
     // Initialize GLFW
     if (!glfwInit()) {
         fprintf(stderr, "Failed to initialize GLFW\n");
         return -1;
     }
-
-    global_player.posx = 0;
-    global_player.posy = 0;
 
     // Set error callback
     glfwSetErrorCallback(error_callback);
@@ -136,11 +156,21 @@ int main(void) {
     unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 
     Arena persistent;
-    persistent.data = (uint8*)malloc(2*1024);// allocate 2 megabyte (not very much)
-    persistent.capacity = 1024;
+
+    #define KILOBYTE 1024
+    const int PERSISTENT_ARENA_SIZE = 1*KILOBYTE*KILOBYTE;
+    const int FRAME_ARENA_SIZE = (KILOBYTE*KILOBYTE)/2;
+    persistent.data = (uint8*)malloc(PERSISTENT_ARENA_SIZE + FRAME_ARENA_SIZE*2); // 2 MB
+    persistent.capacity = PERSISTENT_ARENA_SIZE;
     persistent.current = 0;
-    Arena frame_1, frame_2;
-    //frame_1.data = persistent
+    Arena frame_arena_0;
+    Arena frame_arena_1;
+    frame_arena_0.data = persistent.data + persistent.capacity;
+    frame_arena_0.capacity = FRAME_ARENA_SIZE;
+    frame_arena_0.current = 0;
+    frame_arena_1.data = frame_arena_0.data + frame_arena_0.capacity;
+    frame_arena_1.capacity = FRAME_ARENA_SIZE;
+    frame_arena_1.current = 0;
 
 
     uint32 start_of_shader_text = persistent.current;
@@ -176,23 +206,43 @@ int main(void) {
     glDeleteShader(fragment_shader);
 
     glUseProgram(shaderProgram);
-
-    float i = 0.0f;
     GLuint offset_location = glGetUniformLocation(shaderProgram, "offset");
-    // Render loop
+    
+    // Setup game state
+    frame_arena_0.current += sizeof(Frame_Info);
+    frame_arena_1.current += sizeof(Frame_Info);
+    Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
+    this_frame->player.posx = 0;
+    this_frame->player.posy = 0;
+
+    bool even_frame = true;
     while (!glfwWindowShouldClose(window)) {
-        // Clear the screen
+        Frame_Info* last_frame = this_frame;
+        if (even_frame) {
+            clear_arena(&frame_arena_0);
+            frame_arena_0.current += sizeof(Frame_Info);
+            this_frame = (Frame_Info*)frame_arena_0.data;
+        }
+        else {
+            clear_arena(&frame_arena_1);
+            frame_arena_1.current += sizeof(Frame_Info);
+            this_frame = (Frame_Info*)frame_arena_1.data;
+        }
+        this_frame->move_key_pressed = get_updated_input(window, last_frame->move_key_pressed);
+        this_frame->player = get_updated_player(last_frame->player, this_frame->move_key_pressed);
+
         float time = glfwGetTime();
-        glClearColor(.2f, .5f, (float)global_player.posx / 255, 1.0f);
+        glClearColor(.2f, .5f, (float)this_frame->player.posx / 255, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(VAO);
-        glUniform2f(offset_location, global_player.posx / 100.0f, 0);
+        glUniform2f(offset_location, this_frame->player.posx / 100.0f, 0);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
         glfwPollEvents();
+        even_frame = !even_frame;
     }
 
     // Cleanup
