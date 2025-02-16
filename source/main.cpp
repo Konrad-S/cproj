@@ -5,14 +5,14 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-typedef char      int8;
-typedef short     int16;
-typedef long      int32;
-typedef long long int64;
-typedef unsigned char      uint8;
-typedef unsigned short     uint16;
-typedef unsigned long      uint32;
-typedef unsigned long long uint64;
+typedef char      s8;
+typedef short     s16;
+typedef long      s32;
+typedef long long s64;
+typedef unsigned char      u8;
+typedef unsigned short     u16;
+typedef unsigned long      u32;
+typedef unsigned long long u64;
 
 struct Player {
     int posx;
@@ -20,9 +20,9 @@ struct Player {
 };
 
 struct Arena {
-    uint8* data;
-    uint64 current;
-    uint64 capacity;
+    u8* data;
+    u64 current;
+    u64 capacity;
 };
 
 struct Frame_Info {
@@ -51,7 +51,7 @@ void clear_arena(Arena* arena) {
     arena->current = 0;
 }
 
-uint32 read_entire_file_txt (Arena* arena, const char* file_path) {
+u32 read_entire_file_txt (Arena* arena, const char* file_path) {
     HANDLE handle = CreateFile(file_path,
                                GENERIC_READ,
                                FILE_SHARE_READ,
@@ -160,7 +160,7 @@ int main(void) {
     #define KILOBYTE 1024
     const int PERSISTENT_ARENA_SIZE = 1*KILOBYTE*KILOBYTE;
     const int FRAME_ARENA_SIZE = (KILOBYTE*KILOBYTE)/2;
-    persistent.data = (uint8*)malloc(PERSISTENT_ARENA_SIZE + FRAME_ARENA_SIZE*2); // 2 MB
+    persistent.data = (u8*)malloc(PERSISTENT_ARENA_SIZE + FRAME_ARENA_SIZE*2); // 2 MB
     persistent.capacity = PERSISTENT_ARENA_SIZE;
     persistent.current = 0;
     Arena frame_arena_0;
@@ -173,9 +173,9 @@ int main(void) {
     frame_arena_1.current = 0;
 
 
-    uint32 start_of_shader_text = persistent.current;
+    u32 start_of_shader_text = persistent.current;
 
-    uint32 bytes_read = read_entire_file_txt(&persistent, "../assets/vertex.txt");
+    u32 bytes_read = read_entire_file_txt(&persistent, "../assets/vertex.txt");
     if (bytes_read == 0) {
         printf("Failed to get vertex shader, exiting...");
         return -1;
@@ -232,7 +232,7 @@ int main(void) {
         this_frame->player = get_updated_player(last_frame->player, this_frame->move_key_pressed);
 
         float time = glfwGetTime();
-        glClearColor(.2f, .5f, (float)this_frame->player.posx / 255, 1.0f);
+        glClearColor(.2f, .5f, .5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(VAO);
