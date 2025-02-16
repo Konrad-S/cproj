@@ -135,24 +135,28 @@ int main(void) {
 
     unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 
-    Arena arena;
-    arena.data = (uint8*)malloc(2*1024);// allocate 2 megabyte (not very much)
-    arena.capacity = 2*1024;
-    arena.current = 0;
-    uint32 start_of_shader_text = arena.current;
+    Arena persistent;
+    persistent.data = (uint8*)malloc(2*1024);// allocate 2 megabyte (not very much)
+    persistent.capacity = 1024;
+    persistent.current = 0;
+    Arena frame_1, frame_2;
+    //frame_1.data = persistent
 
-    uint32 bytes_read = read_entire_file_txt(&arena, "../assets/vertex.txt");
+
+    uint32 start_of_shader_text = persistent.current;
+
+    uint32 bytes_read = read_entire_file_txt(&persistent, "../assets/vertex.txt");
     if (bytes_read == 0) {
         printf("Failed to get vertex shader, exiting...");
         return -1;
     }
-    const GLchar* vertex_shader_source = (GLchar*) arena.data + start_of_shader_text;
+    const GLchar* vertex_shader_source = (GLchar*) persistent.data + start_of_shader_text;
     glShaderSource(vertex_shader, 1, &vertex_shader_source, (GLint*)&bytes_read);
     glCompileShader(vertex_shader);
-    arena.current = start_of_shader_text;
+    persistent.current = start_of_shader_text;
 
-    bytes_read = read_entire_file_txt(&arena, "../assets/fragment.txt");
-    const GLchar* fragment_shader_source = (GLchar*) arena.data + start_of_shader_text;
+    bytes_read = read_entire_file_txt(&persistent, "../assets/fragment.txt");
+    const GLchar* fragment_shader_source = (GLchar*) persistent.data + start_of_shader_text;
     if (bytes_read == 0) {
         printf("Failed to get fragment shader, exiting...");
         return -1;
@@ -160,7 +164,7 @@ int main(void) {
     unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment_shader, 1, &fragment_shader_source, (GLint*)&bytes_read);
     glCompileShader(fragment_shader);
-    arena.current = start_of_shader_text;
+    persistent.current = start_of_shader_text;
 
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertex_shader);
