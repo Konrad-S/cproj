@@ -27,21 +27,6 @@ struct Arena {
 
 Player global_player;
 
-const char* vertex_shader_source = 
-"#version 330 core\n"
-"layout (location = 0) in vec3 aPos;\n"
-"uniform vec2 offset;"
-"void main() {\n"
-"   gl_Position = vec4(aPos + vec3(offset, 0), 1.0);\n"
-"}\n";
-
-const char* fragment_shader_source = 
-"#version 330 core\n"
-"out vec4 FragColor;\n"
-"void main() {\n"
-"   FragColor = vec4(1.0, 0.5, 0.2, 1.0);\n"
-"}\n";
-
 // Error callback function
 void error_callback(int error, const char* description) {
     fprintf(stderr, "Error: %s\n", description);
@@ -61,22 +46,31 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
 }
 
-uint32 read_entire_file_txt (Arena* arena, const char* file) {
-    HANDLE handle = CreateFile(file,
+uint32 read_entire_file_txt (Arena* arena, const char* file_path) {
+    HANDLE handle = CreateFile(file_path,
                                GENERIC_READ,
                                FILE_SHARE_READ,
                                NULL,
                                OPEN_EXISTING,
                                FILE_ATTRIBUTE_NORMAL,
                                NULL);
+    
+    bool do_read_file = handle != INVALID_HANDLE_VALUE;
+    if (!do_read_file) {
+        printf("Failed getting a handle to: %s\nError code: %d\n", file_path, GetLastError());
+    }
+    DWORD bytes_read = 0;
+    if (do_read_file) {
+        bool success = ReadFile(handle, arena->data, arena->capacity - arena->current, &bytes_read, NULL);
+        if (!success) {
+            printf("Failed reading from: %s\nError code: %d\n", file_path, GetLastError());
 
-    DWORD bytes_read;
-    bool success = ReadFile(handle, arena->data, arena->capacity - arena->current, &bytes_read, NULL);
+        }
+    }
     return bytes_read;
 }
 
 int main(void) {
-    printf("%d", (int)sizeof(uint8));
     // Initialize GLFW
     if (!glfwInit()) {
         fprintf(stderr, "Failed to initialize GLFW\n");
@@ -146,13 +140,27 @@ int main(void) {
     arena.capacity = 2*1024;
     arena.current = 0;
     uint32 start_of_shader_text = arena.current;
-    uint32 bytes_read = read_entire_file_txt(&arena, "../assets/vertex.txt");
-    glShaderSource(vertex_shader, 1, arena.data + start_of_shader_text, (GLint*)&bytes_read);
-    glCompileShader(vertex_shader);
 
+    uint32 bytes_read = read_entire_file_txt(&arena, "../assets/vertex.txt");
+    if (bytes_read == 0) {
+        printf("Failed to get vertex shader, exiting...");
+        return -1;
+    }
+    const GLchar* vertex_shader_source = (GLchar*) arena.data + start_of_shader_text;
+    glShaderSource(vertex_shader, 1, &vertex_shader_source, (GLint*)&bytes_read);
+    glCompileShader(vertex_shader);
+    arena.current = start_of_shader_text;
+
+    bytes_read = read_entire_file_txt(&arena, "../assets/fragment.txt");
+    const GLchar* fragment_shader_source = (GLchar*) arena.data + start_of_shader_text;
+    if (bytes_read == 0) {
+        printf("Failed to get fragment shader, exiting...");
+        return -1;
+    }
     unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_shader_source, NULL);
+    glShaderSource(fragment_shader, 1, &fragment_shader_source, (GLint*)&bytes_read);
     glCompileShader(fragment_shader);
+    arena.current = start_of_shader_text;
 
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertex_shader);
