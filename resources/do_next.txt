@@ -1,4 +1,13 @@
 do next:
+    rect
+        float
+    world to screen transformation
+        is matrix overkill for 2d?
+
+        use size of square
+        create moveable camera (draw something else to make sure)
+
+
     obstacles
     collision
 

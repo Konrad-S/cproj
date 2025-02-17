@@ -13,11 +13,29 @@ typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
+typedef float    f32;
+typedef double   f64;
 
 struct Arena {
     u8* data;
     u64 current;
     u64 capacity;
+};
+
+struct Vec2f {
+    f32 x;
+    f32 y;
+};
+
+struct Square {
+    union {
+        Vec2f pos;
+        struct {
+            f32 posx;
+            f32 posy;
+        };
+    };
+    f32 r;
 };
 
 struct Input {
@@ -28,13 +46,13 @@ struct Input {
 };
 
 struct Player {
-    int posx;
-    int posy;
+    Square square;
 };
 
 struct Frame_Info {
     Player player;
     Input input;
+
 };
 
 // Error callback function
@@ -108,20 +126,19 @@ Input get_updated_input(GLFWwindow* window, Input last_input) {
 Player get_updated_player(Player last_player, Input input) {
     Player player = last_player;
     if (input.up) {
-        player.posy += 1;
+        player.square.posy += .1f;
     }
     if (input.right) {
-        player.posx += 1;
+        player.square.posx += .1f;
     }
     if (input.down) {
-        player.posy -= 1;
+        player.square.posy -= .1f;
     }
     if (input.left) {
-        player.posx -= 1;
+        player.square.posx -= .1f;
     }
     return player;
 }
-
 
 int main(void) {
     // Initialize GLFW
@@ -139,7 +156,9 @@ int main(void) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create a windowed mode window and its OpenGL context
-    GLFWwindow* window = glfwCreateWindow(800, 600, "CProj Game", NULL, NULL);
+    u32 screen_width = 800;
+    u32 screen_height = 600;
+    GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, "CProj Game", NULL, NULL);
     if (!window) {
         fprintf(stderr, "Failed to create GLFW window\n");
         glfwTerminate();
@@ -183,7 +202,6 @@ int main(void) {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 
     Arena persistent;
 
@@ -210,11 +228,26 @@ int main(void) {
         printf("Failed to get vertex shader, exiting...");
         return -1;
     }
+
+    unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    if (vertex_shader == 0) {
+        printf("Failed to create vertex shader");
+        return -1;
+    }
     const GLchar* vertex_shader_source = (GLchar*) persistent.data + start_of_shader_text;
     glShaderSource(vertex_shader, 1, &vertex_shader_source, (GLint*)&bytes_read);
     glCompileShader(vertex_shader);
     persistent.current = start_of_shader_text;
-
+    GLint success;
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLint log_length;
+        glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &log_length);
+        char* error_info = (char*)persistent.data + persistent.current;
+        glGetShaderInfoLog(vertex_shader, log_length, nullptr, error_info);
+        printf("Vertex shader compilation error:\n%s", error_info);
+        return -1;
+    }
     bytes_read = read_entire_file_txt(&persistent, "../assets/fragment.txt");
     const GLchar* fragment_shader_source = (GLchar*) persistent.data + start_of_shader_text;
     if (bytes_read == 0) {
@@ -225,27 +258,43 @@ int main(void) {
     glShaderSource(fragment_shader, 1, &fragment_shader_source, (GLint*)&bytes_read);
     glCompileShader(fragment_shader);
     persistent.current = start_of_shader_text;
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLint log_length;
+        glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &log_length);
+        char* error_info = (char*)persistent.data + persistent.current;
+        glGetShaderInfoLog(fragment_shader, log_length, nullptr, error_info);
+        printf("Fragment shader compilation error:\n%s", error_info);
+        return -1;
+    }
 
-    unsigned int shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertex_shader);
-    glAttachShader(shaderProgram, fragment_shader);
-    glLinkProgram(shaderProgram);
+    unsigned int shader_program = glCreateProgram();
+    if (shader_program == 0) {
+        printf("Failed to create shader program");
+        return -1;
+    }
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
 
     // Cleanup
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
-    glUseProgram(shaderProgram);
-    GLuint offset_location = glGetUniformLocation(shaderProgram, "offset");
+    glUseProgram(shader_program);
+    GLuint offset_location = glGetUniformLocation(shader_program, "offset");
+    GLuint world_scale_location = glGetUniformLocation(shader_program, "world_scale");
+    f32 scale = .01f;
+    glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     
     // Setup game state
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
-    this_frame->player.posx = 0;
-    this_frame->player.posy = 0;
+    this_frame->player.square.posx = 0.0f;
+    this_frame->player.square.posy = 0.0f;
 
-    bool even_frame = true;
+    bool even_frame = false;
     while (!glfwWindowShouldClose(window)) {
         Frame_Info* last_frame = this_frame;
         if (even_frame) {
@@ -266,7 +315,7 @@ int main(void) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(VAO);
-        glUniform2f(offset_location, this_frame->player.posx / 100.0f, this_frame->player.posy / 100.0f);
+        glUniform2f(offset_location, this_frame->player.square.posx, this_frame->player.square.posy);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // Swap buffers and poll events

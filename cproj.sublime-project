@@ -5,6 +5,9 @@
 			"path": "source",
 		},
 		{
+			"path": "assets",
+		},
+		{
 			"path": "dependencies\\glad\\include",
 		},
 		{
