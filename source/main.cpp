@@ -14,20 +14,27 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
-struct Player {
-    int posx;
-    int posy;
-};
-
 struct Arena {
     u8* data;
     u64 current;
     u64 capacity;
 };
 
+struct Input {
+    bool up;
+    bool right;
+    bool down;
+    bool left;
+};
+
+struct Player {
+    int posx;
+    int posy;
+};
+
 struct Frame_Info {
     Player player;
-    bool move_key_pressed;
+    Input input;
 };
 
 // Error callback function
@@ -75,19 +82,42 @@ u32 read_entire_file_txt (Arena* arena, const char* file_path) {
     return bytes_read;
 }
 
-bool get_updated_input(GLFWwindow* window, bool last_input) {
+Input get_updated_input(GLFWwindow* window, Input last_input) {
     // Last input will be needed when input handling is more robust, e.g. held vs pressed.
-    int state = glfwGetKey(window, GLFW_KEY_W);
+    Input input = { false, false, false, false};
+
+    int state = glfwGetKey(window, GLFW_KEY_E);
     if (state == GLFW_PRESS) {
-        return true;
+        input.up = true;
     }
-    return false;
+    state = glfwGetKey(window, GLFW_KEY_F);
+    if (state == GLFW_PRESS) {
+        input.right = true;
+    }
+    state = glfwGetKey(window, GLFW_KEY_D);
+    if (state == GLFW_PRESS) {
+        input.down = true;
+    }
+    state = glfwGetKey(window, GLFW_KEY_S);
+    if (state == GLFW_PRESS) {
+        input.left = true;
+    }
+    return input;
 }
 
-Player get_updated_player(Player last_player, bool moved) {
+Player get_updated_player(Player last_player, Input input) {
     Player player = last_player;
-    if (moved) {
+    if (input.up) {
+        player.posy += 1;
+    }
+    if (input.right) {
         player.posx += 1;
+    }
+    if (input.down) {
+        player.posy -= 1;
+    }
+    if (input.left) {
+        player.posx -= 1;
     }
     return player;
 }
@@ -228,15 +258,15 @@ int main(void) {
             frame_arena_1.current += sizeof(Frame_Info);
             this_frame = (Frame_Info*)frame_arena_1.data;
         }
-        this_frame->move_key_pressed = get_updated_input(window, last_frame->move_key_pressed);
-        this_frame->player = get_updated_player(last_frame->player, this_frame->move_key_pressed);
+        this_frame->input = get_updated_input(window, last_frame->input);
+        this_frame->player = get_updated_player(last_frame->player, this_frame->input);
 
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glBindVertexArray(VAO);
-        glUniform2f(offset_location, this_frame->player.posx / 100.0f, 0);
+        glUniform2f(offset_location, this_frame->player.posx / 100.0f, this_frame->player.posy / 100.0f);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // Swap buffers and poll events

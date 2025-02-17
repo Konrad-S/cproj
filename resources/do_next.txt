@@ -1,0 +1,13 @@
+do next:
+    obstacles
+    collision
+
+    then:
+        split into win32 and game
+            hotload dll
+            save/load state
+
+edit levels in game
+    plain txt
+    one entity per line
+    versioning (look this up)
