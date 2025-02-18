@@ -310,8 +310,11 @@ int main(void) {
     this_frame->player.square.r = 1.f;
 
     this_frame->objects = (Square*)(frame_arena_0.data + frame_arena_0.current);
-    *this_frame->objects = Square{ 10.0f, 5.0f, 2.0f };
-    this_frame->objects_count = 1;
+    this_frame->objects[0] = Square{ 10.0f, 5.0f, 1.0f };
+    this_frame->objects[1] = Square{ 9.0f, 5.0f, .9f };
+    this_frame->objects[2] = Square{ 8.0f, 5.0f, 1.0f };
+    this_frame->objects[3] = Square{ 7.5f, 5.0f, 1.0f };
+    this_frame->objects_count = 4;
     frame_arena_0.current += sizeof(Square);
 
 
@@ -343,10 +346,12 @@ int main(void) {
         glUniform2f(scale_location, this_frame->player.square.r, this_frame->player.square.r);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        Square object = this_frame->objects[0];
-        glUniform2f(offset_location, object.posx, object.posy);
-        glUniform2f(scale_location, object.r, object.r);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        for (int i = 0; i < this_frame->objects_count; i++) {
+            Square object = this_frame->objects[i];
+            glUniform2f(offset_location, object.posx, object.posy);
+            glUniform2f(scale_location, object.r, object.r);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
