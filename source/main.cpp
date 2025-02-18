@@ -284,6 +284,7 @@ int main(void) {
     glUseProgram(shader_program);
     GLuint offset_location = glGetUniformLocation(shader_program, "offset");
     GLuint world_scale_location = glGetUniformLocation(shader_program, "world_scale");
+    GLuint scale_location = glGetUniformLocation(shader_program, "scale");
     f32 scale = .01f;
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     
@@ -293,6 +294,7 @@ int main(void) {
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
     this_frame->player.square.posx = 0.0f;
     this_frame->player.square.posy = 0.0f;
+    this_frame->player.square.r = .1f;
 
     bool even_frame = false;
     while (!glfwWindowShouldClose(window)) {
@@ -316,6 +318,8 @@ int main(void) {
 
         glBindVertexArray(VAO);
         glUniform2f(offset_location, this_frame->player.square.posx, this_frame->player.square.posy);
+
+        glUniform2f(scale_location, this_frame->player.square.r, this_frame->player.square.r);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // Swap buffers and poll events
