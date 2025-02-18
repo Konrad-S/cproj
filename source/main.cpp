@@ -50,9 +50,10 @@ struct Player {
 };
 
 struct Frame_Info {
-    Player player;
-    Input input;
-
+    Player  player;
+    Input   input;
+    Square* objects;
+    u32     objects_count;
 };
 
 // Error callback function
@@ -138,6 +139,18 @@ Player get_updated_player(Player last_player, Input input) {
         player.square.posx -= .1f;
     }
     return player;
+}
+
+u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
+    Square* this_frame = (Square*)(this_frame_arena->data + this_frame_arena->current);
+    u32 i = 0;
+    for (i; i < last_frame->objects_count; ++i) {
+        // We could copy the whole thing, but in 
+        // the future we want to do things in here
+        this_frame[i] = last_frame->objects[i];
+        this_frame_arena->current++;
+    }
+    return i;
 }
 
 int main(void) {
@@ -294,23 +307,32 @@ int main(void) {
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
     this_frame->player.square.posx = 0.0f;
     this_frame->player.square.posy = 0.0f;
-    this_frame->player.square.r = .1f;
+    this_frame->player.square.r = 1.f;
+
+    this_frame->objects = (Square*)(frame_arena_0.data + frame_arena_0.current);
+    *this_frame->objects = Square{ 10.0f, 5.0f, 2.0f };
+    this_frame->objects_count = 1;
+    frame_arena_0.current += sizeof(Square);
+
 
     bool even_frame = false;
     while (!glfwWindowShouldClose(window)) {
         Frame_Info* last_frame = this_frame;
+        Arena* frame_arena;
         if (even_frame) {
-            clear_arena(&frame_arena_0);
-            frame_arena_0.current += sizeof(Frame_Info);
-            this_frame = (Frame_Info*)frame_arena_0.data;
+            frame_arena = &frame_arena_0;
         }
         else {
-            clear_arena(&frame_arena_1);
-            frame_arena_1.current += sizeof(Frame_Info);
-            this_frame = (Frame_Info*)frame_arena_1.data;
+            frame_arena = &frame_arena_1;
         }
+        clear_arena(frame_arena);
+        frame_arena->current += sizeof(Frame_Info);
+        this_frame = (Frame_Info*)frame_arena->data;
+
         this_frame->input = get_updated_input(window, last_frame->input);
         this_frame->player = get_updated_player(last_frame->player, this_frame->input);
+        this_frame->objects = (Square*)(frame_arena->data + frame_arena->current);
+        this_frame->objects_count = update_objects(last_frame, frame_arena);
 
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
@@ -318,8 +340,12 @@ int main(void) {
 
         glBindVertexArray(VAO);
         glUniform2f(offset_location, this_frame->player.square.posx, this_frame->player.square.posy);
-
         glUniform2f(scale_location, this_frame->player.square.r, this_frame->player.square.r);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        Square object = this_frame->objects[0];
+        glUniform2f(offset_location, object.posx, object.posy);
+        glUniform2f(scale_location, object.r, object.r);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // Swap buffers and poll events
