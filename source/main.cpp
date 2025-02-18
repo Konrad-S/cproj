@@ -52,6 +52,8 @@ struct Player {
 struct Frame_Info {
     Player  player;
     Input   input;
+    Vec2f   camera_pos;
+    Input   camera_input;
     Square* objects;
     u32     objects_count;
 };
@@ -124,21 +126,51 @@ Input get_updated_input(GLFWwindow* window, Input last_input) {
     return input;
 }
 
-Player get_updated_player(Player last_player, Input input) {
-    Player player = last_player;
+Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
+    // Last input will be needed when input handling is more robust, e.g. held vs pressed.
+    Input input = { false, false, false, false};
+
+    int state = glfwGetKey(window, GLFW_KEY_I);
+    if (state == GLFW_PRESS) {
+        input.up = true;
+    }
+    state = glfwGetKey(window, GLFW_KEY_L);
+    if (state == GLFW_PRESS) {
+        input.right = true;
+    }
+    state = glfwGetKey(window, GLFW_KEY_K);
+    if (state == GLFW_PRESS) {
+        input.down = true;
+    }
+    state = glfwGetKey(window, GLFW_KEY_J);
+    if (state == GLFW_PRESS) {
+        input.left = true;
+    }
+    return input;
+}
+
+Vec2f move_pos(Vec2f last_pos, Input input) {
+    Vec2f pos = last_pos;
     if (input.up) {
-        player.square.posy += .1f;
+        pos.y += .1f;
     }
     if (input.right) {
-        player.square.posx += .1f;
+        pos.x += .1f;
     }
     if (input.down) {
-        player.square.posy -= .1f;
+        pos.y -= .1f;
     }
     if (input.left) {
-        player.square.posx -= .1f;
+        pos.x -= .1f;
     }
-    return player;
+    return pos;
+}
+
+Square get_updated_player(Square last_player, Input input) {
+    Square new_player;
+    new_player.pos = move_pos(last_player.pos, input);
+    new_player.r = last_layer.r;
+    return new_player;
 }
 
 u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
@@ -298,6 +330,7 @@ int main(void) {
     GLuint offset_location = glGetUniformLocation(shader_program, "offset");
     GLuint world_scale_location = glGetUniformLocation(shader_program, "world_scale");
     GLuint scale_location = glGetUniformLocation(shader_program, "scale");
+    GLuint camera_location = glGetUniformLocation(shader_program, "camera");
     f32 scale = .01f;
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     
@@ -305,8 +338,8 @@ int main(void) {
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
-    this_frame->player.square.posx = 0.0f;
-    this_frame->player.square.posy = 0.0f;
+    this_frame->player.square.posx = 1.0f;
+    this_frame->player.square.posy = 5.0f;
     this_frame->player.square.r = 1.f;
 
     this_frame->objects = (Square*)(frame_arena_0.data + frame_arena_0.current);
@@ -332,14 +365,18 @@ int main(void) {
         frame_arena->current += sizeof(Frame_Info);
         this_frame = (Frame_Info*)frame_arena->data;
 
-        this_frame->input = get_updated_input(window, last_frame->input);
-        this_frame->player = get_updated_player(last_frame->player, this_frame->input);
+        this_frame->input        = get_updated_input(window, last_frame->input);
+        this_frame->camera_input = get_updated_camera_input(window, last_frame->camera_input);
+        this_frame->player.square = get_updated_player(last_frame->player.square, this_frame->input);
+        this_frame->camera_pos = move_pos(last_frame->camera_pos, this_frame->camera_input);
         this_frame->objects = (Square*)(frame_arena->data + frame_arena->current);
         this_frame->objects_count = update_objects(last_frame, frame_arena);
 
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUniform2f(camera_location, this_frame->camera_pos.x, this_frame->camera_pos.y);
 
         glBindVertexArray(VAO);
         glUniform2f(offset_location, this_frame->player.square.posx, this_frame->player.square.posy);
