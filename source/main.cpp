@@ -5,58 +5,9 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-typedef int8_t   s8;
-typedef int16_t  s16;
-typedef int32_t  s32;
-typedef int64_t  s64;
-typedef uint8_t  u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
-typedef float    f32;
-typedef double   f64;
+#include "game.h"
 
-struct Arena {
-    u8* data;
-    u64 current;
-    u64 capacity;
-};
-
-struct Vec2f {
-    f32 x;
-    f32 y;
-};
-
-struct Square {
-    union {
-        Vec2f pos;
-        struct {
-            f32 posx;
-            f32 posy;
-        };
-    };
-    f32 r;
-};
-
-struct Input {
-    bool up;
-    bool right;
-    bool down;
-    bool left;
-};
-
-struct Player {
-    Square square;
-};
-
-struct Frame_Info {
-    Player  player;
-    Input   input;
-    Vec2f   camera_pos;
-    Input   camera_input;
-    Square* objects;
-    u32     objects_count;
-};
+typedef Square (*Get_Updated_Player)(Square, Input);
 
 // Error callback function
 void error_callback(int error, const char* description) {
@@ -126,6 +77,23 @@ Input get_updated_input(GLFWwindow* window, Input last_input) {
     return input;
 }
 
+Vec2f move_pos(Vec2f last_pos, Input input) {
+    Vec2f pos = last_pos;
+    if (input.up) {
+        pos.y += .1f;
+    }
+    if (input.right) {
+        pos.x += .1f;
+    }
+    if (input.down) {
+        pos.y -= .1f;
+    }
+    if (input.left) {
+        pos.x -= .1f;
+    }
+    return pos;
+}
+
 Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
     // Last input will be needed when input handling is more robust, e.g. held vs pressed.
     Input input = { false, false, false, false};
@@ -149,30 +117,6 @@ Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
     return input;
 }
 
-Vec2f move_pos(Vec2f last_pos, Input input) {
-    Vec2f pos = last_pos;
-    if (input.up) {
-        pos.y += .1f;
-    }
-    if (input.right) {
-        pos.x += .1f;
-    }
-    if (input.down) {
-        pos.y -= .1f;
-    }
-    if (input.left) {
-        pos.x -= .1f;
-    }
-    return pos;
-}
-
-Square get_updated_player(Square last_player, Input input) {
-    Square new_player;
-    new_player.pos = move_pos(last_player.pos, input);
-    new_player.r = last_layer.r;
-    return new_player;
-}
-
 u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
     Square* this_frame = (Square*)(this_frame_arena->data + this_frame_arena->current);
     u32 i = 0;
@@ -186,21 +130,31 @@ u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
 }
 
 int main(void) {
+    //
+    // Get game DLL and game update procedure 
+    const char* game_dll_name = "game.dll";
+    HMODULE game_dll = LoadLibrary(game_dll_name);
+    if (!game_dll) {
+        printf("Failed to load DLL '%s'", game_dll_name);
+        return -1;
+    }
+    const char* game_function_name = "get_updated_player";
+    Get_Updated_Player get_updated_player = (Get_Updated_Player)GetProcAddress(game_dll, game_function_name); 
+    if (!get_updated_player) {
+        printf("Failed to find function '%s'", game_function_name);
+        return -1;
+    }
+    //
     // Initialize GLFW
     if (!glfwInit()) {
         fprintf(stderr, "Failed to initialize GLFW\n");
         return -1;
     }
-
-    // Set error callback
     glfwSetErrorCallback(error_callback);
-
-    // OpenGL version: 3.3 Core Profile
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Create a windowed mode window and its OpenGL context
     u32 screen_width = 800;
     u32 screen_height = 600;
     GLFWwindow* window = glfwCreateWindow(screen_width, screen_height, "CProj Game", NULL, NULL);
@@ -209,8 +163,6 @@ int main(void) {
         glfwTerminate();
         return -1;
     }
-
-    // Make the window's context current
     glfwMakeContextCurrent(window);
 
     // Load OpenGL functions using GLAD
@@ -218,19 +170,15 @@ int main(void) {
         fprintf(stderr, "Failed to initialize GLAD\n");
         return -1;
     }
-
-    // Set the viewport size
-    glViewport(0, 0, 800, 600);
-
-    // Set key callback
+    glViewport(0, 0, screen_width, screen_height);
     glfwSetKeyCallback(window, key_callback);
+    glfwSwapInterval(1);
 
-
-    // Setting up glDrawArrays
+    //
+    // Setup openGL buffers 
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
-
     float vertices[] = {
         -0.5f, -0.5f, 0.0f,
          0.5f, -0.5f, 0.0f,
@@ -243,13 +191,12 @@ int main(void) {
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-
+    //
+    // Create memory arenas
     Arena persistent;
-
     #define KILOBYTE 1024
     const int PERSISTENT_ARENA_SIZE = 1*KILOBYTE*KILOBYTE;
     const int FRAME_ARENA_SIZE = (KILOBYTE*KILOBYTE)/2;
@@ -265,15 +212,14 @@ int main(void) {
     frame_arena_1.capacity = FRAME_ARENA_SIZE;
     frame_arena_1.current = 0;
 
-
+    //
+    // Load shaders
     u32 start_of_shader_text = persistent.current;
-
     u32 bytes_read = read_entire_file_txt(&persistent, "../assets/vertex.txt");
     if (bytes_read == 0) {
         printf("Failed to get vertex shader, exiting...");
         return -1;
     }
-
     unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     if (vertex_shader == 0) {
         printf("Failed to create vertex shader");
@@ -312,7 +258,6 @@ int main(void) {
         printf("Fragment shader compilation error:\n%s", error_info);
         return -1;
     }
-
     unsigned int shader_program = glCreateProgram();
     if (shader_program == 0) {
         printf("Failed to create shader program");
@@ -321,12 +266,10 @@ int main(void) {
     glAttachShader(shader_program, vertex_shader);
     glAttachShader(shader_program, fragment_shader);
     glLinkProgram(shader_program);
-
-    // Cleanup
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
-
     glUseProgram(shader_program);
+
     GLuint offset_location = glGetUniformLocation(shader_program, "offset");
     GLuint world_scale_location = glGetUniformLocation(shader_program, "world_scale");
     GLuint scale_location = glGetUniformLocation(shader_program, "scale");
@@ -334,6 +277,7 @@ int main(void) {
     f32 scale = .01f;
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     
+    //    
     // Setup game state
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
@@ -389,14 +333,10 @@ int main(void) {
             glUniform2f(scale_location, object.r, object.r);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
-
-        // Swap buffers and poll events
         glfwSwapBuffers(window);
         glfwPollEvents();
         even_frame = !even_frame;
     }
-
-    // Cleanup
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
