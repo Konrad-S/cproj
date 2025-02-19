@@ -56,7 +56,7 @@ struct Frame_Info {
 
 //Square get_updated_player(Square last_player, Input input);
 extern "C" {
-    __declspec(dllexport) Square get_updated_player(Square last_player, Input input);
+    __declspec(dllexport) bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state);
 }
 
 #endif

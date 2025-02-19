@@ -7,7 +7,7 @@
 
 #include "game.h"
 
-typedef Square (*Get_Updated_Player)(Square, Input);
+typedef bool (*Update_Game)(Arena*, Frame_Info*, Arena*);
 
 // Error callback function
 void error_callback(int error, const char* description) {
@@ -77,23 +77,6 @@ Input get_updated_input(GLFWwindow* window, Input last_input) {
     return input;
 }
 
-Vec2f move_pos(Vec2f last_pos, Input input) {
-    Vec2f pos = last_pos;
-    if (input.up) {
-        pos.y += .1f;
-    }
-    if (input.right) {
-        pos.x += .1f;
-    }
-    if (input.down) {
-        pos.y -= .1f;
-    }
-    if (input.left) {
-        pos.x -= .1f;
-    }
-    return pos;
-}
-
 Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
     // Last input will be needed when input handling is more robust, e.g. held vs pressed.
     Input input = { false, false, false, false};
@@ -117,18 +100,6 @@ Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
     return input;
 }
 
-u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
-    Square* this_frame = (Square*)(this_frame_arena->data + this_frame_arena->current);
-    u32 i = 0;
-    for (i; i < last_frame->objects_count; ++i) {
-        // We could copy the whole thing, but in 
-        // the future we want to do things in here
-        this_frame[i] = last_frame->objects[i];
-        this_frame_arena->current++;
-    }
-    return i;
-}
-
 int main(void) {
     //
     // Get game DLL and game update procedure 
@@ -138,10 +109,10 @@ int main(void) {
         printf("Failed to load DLL '%s'", game_dll_name);
         return -1;
     }
-    const char* game_function_name = "get_updated_player";
-    Get_Updated_Player get_updated_player = (Get_Updated_Player)GetProcAddress(game_dll, game_function_name); 
-    if (!get_updated_player) {
-        printf("Failed to find function '%s'", game_function_name);
+    const char* update_game_function_name = "update_game";
+    Update_Game update_game = (Update_Game)GetProcAddress(game_dll, update_game_function_name); 
+    if (!update_game) {
+        printf("Failed to find function '%s'. Error code: %d", update_game_function_name, GetLastError());
         return -1;
     }
     //
@@ -296,7 +267,8 @@ int main(void) {
 
 
     bool even_frame = false;
-    while (!glfwWindowShouldClose(window)) {
+    bool game_wants_to_keep_running = true;
+    while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
         Frame_Info* last_frame = this_frame;
         Arena* frame_arena;
         if (even_frame) {
@@ -311,10 +283,7 @@ int main(void) {
 
         this_frame->input        = get_updated_input(window, last_frame->input);
         this_frame->camera_input = get_updated_camera_input(window, last_frame->camera_input);
-        this_frame->player.square = get_updated_player(last_frame->player.square, this_frame->input);
-        this_frame->camera_pos = move_pos(last_frame->camera_pos, this_frame->camera_input);
-        this_frame->objects = (Square*)(frame_arena->data + frame_arena->current);
-        this_frame->objects_count = update_objects(last_frame, frame_arena);
+        game_wants_to_keep_running = update_game(frame_arena, last_frame, &persistent);
 
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);

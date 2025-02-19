@@ -25,3 +25,24 @@ Square get_updated_player(Square last_player, Input input) {
     new_player.r = last_player.r;
     return new_player;
 }
+
+u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
+    Square* this_frame = (Square*)(this_frame_arena->data + this_frame_arena->current);
+    u32 i = 0;
+    for (i; i < last_frame->objects_count; ++i) {
+        // We could copy the whole thing, but in 
+        // the future we want to do things in here
+        this_frame[i] = last_frame->objects[i];
+        this_frame_arena->current++;
+    }
+    return i;
+}
+
+bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
+    Frame_Info* this_frame = (Frame_Info*)frame_state->data;
+    this_frame->player.square = get_updated_player(last_frame->player.square, this_frame->input);
+    this_frame->camera_pos = move_pos(last_frame->camera_pos, this_frame->camera_input);
+    this_frame->objects = (Square*)(frame_state->data + frame_state->current);
+    this_frame->objects_count = update_objects(last_frame, frame_state);
+    return true;
+}
