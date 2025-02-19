@@ -2,16 +2,8 @@
 	"folders":
 	[
 		{
-			"path": "source",
-		},
-		{
-			"path": "assets",
-		},
-		{
-			"path": "dependencies\\glad\\include",
-		},
-		{
-			"path": "dependencies\\glfw-3.4\\include"
+			"path": ".",
+			"file_include_patterns": ["build.bat", "*.h", "*.cpp", "*.txt"],
 		},
 	],
 }
