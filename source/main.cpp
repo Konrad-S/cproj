@@ -100,33 +100,41 @@ Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
     return input;
 }
 
-Update_Game* load_game_code() {
+struct Game_Code {
+    HMODULE dll_handle;
+    Update_Game update_function;
+    bool valid;
+};
+
+Game_Code load_game_code() {
+    Game_Code game_code;
+    game_code.valid = false;
     const char* game_dll_name = "game.dll";
-    HMODULE game_dll = LoadLibrary(game_dll_name);
-    if (!game_dll) {
+    game_code.dll_handle = LoadLibrary(game_dll_name);
+    if (!game_code.dll_handle) {
         printf("Failed to load DLL '%s'", game_dll_name);
-        return -1;
+        return game_code;
     }
     const char* update_game_function_name = "update_game";
-    Update_Game update_game = (Update_Game)GetProcAddress(game_dll, update_game_function_name); 
-    if (!update_game) {
+    game_code.update_function = (Update_Game)GetProcAddress(game_code.dll_handle, update_game_function_name); 
+    if (!game_code.update_function) {
         printf("Failed to find function '%s'. Error code: %d", update_game_function_name, GetLastError());
-        return -1;
+        return game_code;
     }
-    return &update_game;
+    game_code.valid = true;
+    return game_code;
 }
 
-void unload_game_code(Update_Game* game_code) {
-    if (game_code) {
-        FreeLibrary()
+void unload_game_code(Game_Code* game_code) {
+    if (game_code->dll_handle) {
+        FreeLibrary(game_code->dll_handle); //what if we free invalid?
+        game_code->dll_handle = 0;
     }
+    game_code->valid = false;
+    game_code->update_function = 0;
 }
 
 int main(void) {
-    //
-    // Get game DLL and game update procedure 
-    load_game_dll();
-
     //
     // Initialize GLFW
     if (!glfwInit()) {
@@ -281,6 +289,11 @@ int main(void) {
     bool even_frame = false;
     bool game_wants_to_keep_running = true;
     while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
+        //
+        // Get game DLL and game update procedure 
+        Game_Code game_code = load_game_code();
+        if (!game_code.valid) return -1;
+
         Frame_Info* last_frame = this_frame;
         Arena* frame_arena;
         if (even_frame) {
@@ -295,7 +308,7 @@ int main(void) {
 
         this_frame->input        = get_updated_input(window, last_frame->input);
         this_frame->camera_input = get_updated_camera_input(window, last_frame->camera_input);
-        game_wants_to_keep_running = update_game(frame_arena, last_frame, &persistent);
+        game_wants_to_keep_running = game_code.update_function(frame_arena, last_frame, &persistent);
 
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
@@ -317,6 +330,8 @@ int main(void) {
         glfwSwapBuffers(window);
         glfwPollEvents();
         even_frame = !even_frame;
+
+        unload_game_code(&game_code);
     }
     glfwDestroyWindow(window);
     glfwTerminate();
