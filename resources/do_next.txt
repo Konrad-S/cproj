@@ -1,6 +1,13 @@
 do next:
-    cleanup / put stuff into game.cpp
-    
+    at home
+        setup git repo for sublime text settings
+            possible to put in the folder directly
+
+    cleanup loading/unloading game code
+        need to store the dll, so that we can unload it
+            make a struct that holds dll and function pointer and bool is_valid
+
+
     then:
         collision
 

@@ -100,9 +100,7 @@ Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
     return input;
 }
 
-int main(void) {
-    //
-    // Get game DLL and game update procedure 
+Update_Game* load_game_code() {
     const char* game_dll_name = "game.dll";
     HMODULE game_dll = LoadLibrary(game_dll_name);
     if (!game_dll) {
@@ -115,6 +113,20 @@ int main(void) {
         printf("Failed to find function '%s'. Error code: %d", update_game_function_name, GetLastError());
         return -1;
     }
+    return &update_game;
+}
+
+void unload_game_code(Update_Game* game_code) {
+    if (game_code) {
+        FreeLibrary()
+    }
+}
+
+int main(void) {
+    //
+    // Get game DLL and game update procedure 
+    load_game_dll();
+
     //
     // Initialize GLFW
     if (!glfwInit()) {
