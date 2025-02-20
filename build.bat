@@ -3,8 +3,8 @@
 set sources=source\main.cpp dependencies\glad\src\glad.c
 set compiler_options=/MD /Zi /DEBUG -nologo
 set includes=/I"dependencies\glad\include" /I"dependencies/glfw-3.4/include"
-set linker_options=/Fo:build\ /Fe:build\Cproj.exe
+set linker_options= /link /NOIMPLIB /INCREMENTAL:NO
 set libs=dependencies\glfw-3.4.bin.WIN64\lib-vc2022\glfw3.lib opengl32.lib user32.lib gdi32.lib shell32.lib
-cl /LD %compiler_options% source\game.cpp /DBUILD_DLL /Fo:build\ /Fe:build\game.dll 
+cl /LD %compiler_options% source\game.cpp /DBUILD_DLL /Fo:build\ /Fe:build\game.dll %linker_options% 
 if %ERRORLEVEL% neq 0 exit /b
-cl %sources% %compiler_options% %includes% %linker_options% /link %libs%
+cl %sources% %compiler_options% %includes% /Fo:build\ /Fe:build\Cproj.exe %linker_options% %libs%
