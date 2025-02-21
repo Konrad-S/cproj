@@ -23,7 +23,7 @@ struct Vec2f {
     f32 y;
 };
 
-struct Square {
+struct Rectf {
     union {
         Vec2f pos;
         struct {
@@ -31,7 +31,13 @@ struct Square {
             f32 posy;
         };
     };
-    f32 r;
+    union {
+        Vec2f radius;
+        struct {
+            f32 radiusx;
+            f32 radiusy;
+        };
+    };
 };
 
 struct Input {
@@ -42,7 +48,7 @@ struct Input {
 };
 
 struct Player {
-    Square square;
+    Rectf rect;
 };
 
 struct Frame_Info {
@@ -50,11 +56,13 @@ struct Frame_Info {
     Input   input;
     Vec2f   camera_pos;
     Input   camera_input;
-    Square* objects;
+    Rectf* objects;
     u32     objects_count;
+    Rectf* collisions;
+    u32     collisions_count;
 };
 
-//Square get_updated_player(Square last_player, Input input);
+//Rectf get_updated_player(Rectf last_player, Input input);
 extern "C" {
     __declspec(dllexport) bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state);
 }

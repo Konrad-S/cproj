@@ -30,6 +30,15 @@ void clear_arena(Arena* arena) {
     arena->current = 0;
 }
 
+FILETIME get_write_time(char* file) {
+    FILETIME write_time = {};
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (GetFileAttributesEx(file, GetFileExInfoStandard, &data)) {
+        write_time = data.ftLastWriteTime;
+    }
+    return (write_time);
+}
+
 u32 read_entire_file_txt (Arena* arena, const char* file_path) {
     HANDLE handle = CreateFile(file_path,
                                GENERIC_READ,
@@ -103,16 +112,17 @@ Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
 struct Game_Code {
     HMODULE dll_handle;
     Update_Game update_function;
+    FILETIME dll_write_time;
     bool valid;
 };
 
-Game_Code load_game_code() {
+Game_Code load_game_code(char* file, char* temp_file) {
     Game_Code game_code;
     game_code.valid = false;
-    const char* game_dll_name = "game.dll";
-    game_code.dll_handle = LoadLibrary(game_dll_name);
+    CopyFile(file, temp_file, FALSE);
+    game_code.dll_handle = LoadLibrary(temp_file);
     if (!game_code.dll_handle) {
-        printf("Failed to load DLL '%s'", game_dll_name);
+        printf("Failed to load DLL '%s'", temp_file);
         return game_code;
     }
     const char* update_game_function_name = "update_game";
@@ -122,6 +132,7 @@ Game_Code load_game_code() {
         return game_code;
     }
     game_code.valid = true;
+    game_code.dll_write_time = get_write_time(temp_file);
     return game_code;
 }
 
@@ -273,26 +284,36 @@ int main(void) {
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
-    this_frame->player.square.posx = 1.0f;
-    this_frame->player.square.posy = 5.0f;
-    this_frame->player.square.r = 1.f;
+    this_frame->player.rect.posx = 1.0f;
+    this_frame->player.rect.posy = 5.0f;
+    this_frame->player.rect.radiusx = 1.f;
+    this_frame->player.rect.radiusy = 1.f;
 
-    this_frame->objects = (Square*)(frame_arena_0.data + frame_arena_0.current);
-    this_frame->objects[0] = Square{ 10.0f, 5.0f, 1.0f };
-    this_frame->objects[1] = Square{ 9.0f, 5.0f, .9f };
-    this_frame->objects[2] = Square{ 8.0f, 5.0f, 1.0f };
-    this_frame->objects[3] = Square{ 7.5f, 5.0f, 1.0f };
+    this_frame->objects = (Rectf*)(frame_arena_0.data + frame_arena_0.current);
+    this_frame->objects[0] = Rectf{ 10.0f, 5.0f, 1.0f, .5f };
+    this_frame->objects[1] = Rectf{ 9.0f, 5.0f, .9f, .1f };
+    this_frame->objects[2] = Rectf{ 8.0f, 5.0f, 1.0f, 3.0f };
+    this_frame->objects[3] = Rectf{ 7.5f, 5.0f, 1.0f, 2.0f };
     this_frame->objects_count = 4;
-    frame_arena_0.current += sizeof(Square);
+    frame_arena_0.current += sizeof(Rectf);
 
 
     bool even_frame = false;
     bool game_wants_to_keep_running = true;
+    char* game_dll_filename = "game.dll";
+    char* temp_game_dll_filename = "TEMP_game.dll";
+    Game_Code game_code = load_game_code(game_dll_filename, temp_game_dll_filename);
     while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
         //
-        // Get game DLL and game update procedure 
-        Game_Code game_code = load_game_code();
-        if (!game_code.valid) return -1;
+        // Get game DLL and game update procedure
+
+        FILETIME dll_write_time = get_write_time(game_dll_filename);
+        if(CompareFileTime(&dll_write_time, &game_code.dll_write_time) != 0) {
+            unload_game_code(&game_code);
+            game_code = load_game_code(game_dll_filename, temp_game_dll_filename);
+            // todo: if we can't run game code, keep looping but don't advance frames
+            if (!game_code.valid) return -1;
+        }
 
         Frame_Info* last_frame = this_frame;
         Arena* frame_arena;
@@ -317,21 +338,19 @@ int main(void) {
         glUniform2f(camera_location, this_frame->camera_pos.x, this_frame->camera_pos.y);
 
         glBindVertexArray(VAO);
-        glUniform2f(offset_location, this_frame->player.square.posx, this_frame->player.square.posy);
-        glUniform2f(scale_location, this_frame->player.square.r, this_frame->player.square.r);
+        glUniform2f(offset_location, this_frame->player.rect.posx, this_frame->player.rect.posy);
+        glUniform2f(scale_location, this_frame->player.rect.radiusx, this_frame->player.rect.radiusy);
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
         for (int i = 0; i < this_frame->objects_count; i++) {
-            Square object = this_frame->objects[i];
+            Rectf object = this_frame->objects[i];
             glUniform2f(offset_location, object.posx, object.posy);
-            glUniform2f(scale_location, object.r, object.r);
+            glUniform2f(scale_location, object.radiusx, object.radiusy);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
         glfwSwapBuffers(window);
         glfwPollEvents();
         even_frame = !even_frame;
-
-        unload_game_code(&game_code);
     }
     glfwDestroyWindow(window);
     glfwTerminate();
