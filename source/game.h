@@ -56,9 +56,9 @@ struct Frame_Info {
     Input   input;
     Vec2f   camera_pos;
     Input   camera_input;
-    Rectf* objects;
+    Rectf*  objects;
     u32     objects_count;
-    Rectf* collisions;
+    Rectf*  collisions;
     u32     collisions_count;
 };
 

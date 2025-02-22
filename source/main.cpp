@@ -176,18 +176,21 @@ int main(void) {
     glfwSetKeyCallback(window, key_callback);
     glfwSwapInterval(1);
 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     //
     // Setup openGL buffers 
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
     float vertices[] = {
-        -0.5f, -0.5f, 0.0f,
-         0.5f, -0.5f, 0.0f,
-         0.5f,  0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-         0.5f,  0.5f, 0.0f,
-        -0.5f,  0.5f, 0.0f
+        -1.f, -1.f, 0.0f,
+         1.f, -1.f, 0.0f,
+         1.f,  1.f, 0.0f,
+        -1.f, -1.f, 0.0f,
+         1.f,  1.f, 0.0f,
+        -1.f,  1.f, 0.0f
     };
     unsigned int VBO;
     glGenBuffers(1, &VBO);
@@ -276,6 +279,7 @@ int main(void) {
     GLuint world_scale_location = glGetUniformLocation(shader_program, "world_scale");
     GLuint scale_location = glGetUniformLocation(shader_program, "scale");
     GLuint camera_location = glGetUniformLocation(shader_program, "camera");
+    GLuint color_location = glGetUniformLocation(shader_program, "color");
     f32 scale = .01f;
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     
@@ -284,13 +288,10 @@ int main(void) {
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
-    this_frame->player.rect.posx = 1.0f;
-    this_frame->player.rect.posy = 5.0f;
-    this_frame->player.rect.radiusx = 1.f;
-    this_frame->player.rect.radiusy = 1.f;
+    this_frame->player.rect = Rectf{ 4.0f, 4.0f, 1.0f, 1.0f };
 
     this_frame->objects = (Rectf*)(frame_arena_0.data + frame_arena_0.current);
-    this_frame->objects[0] = Rectf{ 10.0f, 5.0f, 1.0f, .5f };
+    this_frame->objects[0] = Rectf{ 5.0f, 5.0f, 2.0f, 2.0f };
     this_frame->objects[1] = Rectf{ 9.0f, 5.0f, .9f, .1f };
     this_frame->objects[2] = Rectf{ 8.0f, 5.0f, 1.0f, 3.0f };
     this_frame->objects[3] = Rectf{ 7.5f, 5.0f, 1.0f, 2.0f };
@@ -338,16 +339,25 @@ int main(void) {
         glUniform2f(camera_location, this_frame->camera_pos.x, this_frame->camera_pos.y);
 
         glBindVertexArray(VAO);
-        glUniform2f(offset_location, this_frame->player.rect.posx, this_frame->player.rect.posy);
-        glUniform2f(scale_location, this_frame->player.rect.radiusx, this_frame->player.rect.radiusy);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
         for (int i = 0; i < this_frame->objects_count; i++) {
-            Rectf object = this_frame->objects[i];
-            glUniform2f(offset_location, object.posx, object.posy);
-            glUniform2f(scale_location, object.radiusx, object.radiusy);
+            Rectf rect = this_frame->objects[i];
+            glUniform2f(offset_location, rect.posx, rect.posy);
+            glUniform2f(scale_location, rect.radiusx, rect.radiusy);
+            glUniform4f(color_location, 0, 1, 0, 1);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
+        glUniform2f(offset_location, this_frame->player.rect.posx, this_frame->player.rect.posy);
+        glUniform2f(scale_location, this_frame->player.rect.radiusx, this_frame->player.rect.radiusy);
+        glUniform4f(color_location, 1, 1, 1, 1);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        for (int i = 0; i < this_frame->collisions_count; i++) {
+            Rectf rect = this_frame->collisions[i];
+            glUniform2f(offset_location, rect.posx, rect.posy);
+            glUniform2f(scale_location, rect.radiusx, rect.radiusy);
+            glUniform4f(color_location, 0, 0, 1, 0.5f);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
         glfwSwapBuffers(window);
         glfwPollEvents();
         even_frame = !even_frame;
