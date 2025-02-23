@@ -288,7 +288,7 @@ int main(void) {
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
-    this_frame->player.rect = Rectf{ 4.0f, 4.0f, 1.0f, 1.0f };
+    this_frame->player.rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
 
     this_frame->objects = (Rectf*)(frame_arena_0.data + frame_arena_0.current);
     this_frame->objects[0] = Rectf{ 5.0f, 5.0f, 2.0f, 2.0f };

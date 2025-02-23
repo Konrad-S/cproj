@@ -20,8 +20,6 @@ Vec2f move_pos(Vec2f last_pos, Input input) {
     return pos;
 }
 
-
-
 Rectf rectf_overlap(Rectf a, Rectf b) {
     f32 half_overlap_x  = (a.radiusx + b.radiusx - fabs(a.posx - b.posx)) / 2;
     f32 half_overlap_y = (a.radiusy + b.radiusy - fabs(a.posy - b.posy)) / 2;
@@ -42,8 +40,7 @@ Rectf rectf_overlap(Rectf a, Rectf b) {
     return Rectf{ cposx, cposy, half_overlap_x, half_overlap_y };
 }
 
-// Use an epsilon to have rectfs touching eachother not constantly colliding?
-u32 collide_rectf(Rectf rect, Rectf* others, u32 others_count, Rectf* results) {
+u32 get_overlaps(Rectf rect, Rectf* others, u32 others_count, Rectf* results) {
     u32 results_count = 0;
     for (int i = 0; i < others_count; ++i) {
         Rectf result = rectf_overlap(rect, others[i]);
@@ -55,11 +52,52 @@ u32 collide_rectf(Rectf rect, Rectf* others, u32 others_count, Rectf* results) {
     return results_count;
 }
 
-Rectf get_updated_player(Rectf last_player, Input input) {
-    Rectf new_player;
-    new_player.pos = move_pos(last_player.pos, input);
-    new_player.radius = last_player.radius;
-    return new_player;
+bool check_collided(Rectf a, Rectf b) {
+    f32 overlap_x  = (a.radiusx + b.radiusx - fabs(a.posx - b.posx));
+    f32 overlap_y = (a.radiusy + b.radiusy - fabs(a.posy - b.posy));
+    return (overlap_x > 0 && overlap_y > 0);
+}
+
+const f32 PLAYER_MOVE_SPEED = .1f;
+const f32 COLLISION_EPSILON = .001f;
+Rectf try_move(Rectf player, Input input, Rectf* others, u32 others_count) {
+    if (input.right ^ input.left) {
+        f32 sign;
+        if (input.right) {
+            sign = 1.f;
+        } else {
+            sign = -1.f;
+        }
+        player.posx += PLAYER_MOVE_SPEED * sign;
+        f32 most_extreme_edge = player.posx + player.radiusx * sign;
+        for (u32 i = 0; i < others_count; ++i) {
+            if (!check_collided(player, others[i])) continue;
+            f32 edge = others[i].posx - others[i].radiusx * sign;
+            if (edge * sign < most_extreme_edge * sign) {
+                most_extreme_edge = edge;
+            }
+        }
+        player.posx = most_extreme_edge - (player.radiusx + COLLISION_EPSILON) * sign;
+    }
+    if (input.up ^ input.down) {
+        f32 sign;
+        if (input.up) {
+            sign = 1.f;
+        } else {
+            sign = -1.f;
+        }
+        player.posy += PLAYER_MOVE_SPEED * sign;
+        f32 most_extreme_edge = player.posy + player.radiusy * sign;
+        for (u32 i = 0; i < others_count; ++i) {
+            if (!check_collided(player, others[i])) continue;
+            f32 edge = others[i].posy - others[i].radiusy * sign;
+            if (edge * sign < most_extreme_edge * sign) {
+                most_extreme_edge = edge;
+            }
+        }
+        player.posy = most_extreme_edge - (player.radiusy + COLLISION_EPSILON) * sign;
+    }
+    return player;
 }
 
 u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
@@ -77,16 +115,10 @@ u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
 bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
     Frame_Info* this_frame = (Frame_Info*)frame_state->data;
     Player* player = &this_frame->player;
-    player->rect = get_updated_player(last_frame->player.rect, this_frame->input);
+    *player = last_frame->player;
     this_frame->camera_pos = move_pos(last_frame->camera_pos, this_frame->camera_input);
     this_frame->objects = (Rectf*)(frame_state->data + frame_state->current);
     this_frame->objects_count = update_objects(last_frame, frame_state);
-
-    this_frame->collisions = (Rectf*)frame_state->data + frame_state->current;
-    this_frame->collisions_count = collide_rectf(player->rect, this_frame->objects, this_frame->objects_count, this_frame->collisions);
-    frame_state->current += sizeof(Rectf) * this_frame->collisions_count;
-
-
-
+    player->rect = try_move(player->rect, this_frame->input, this_frame->objects, this_frame->objects_count);
     return true;
 }
