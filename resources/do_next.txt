@@ -1,17 +1,16 @@
 do next:
-    at home
-        setup git repo for sublime text settings
-            possible to put in the folder directly
+    edit levels in game
+        plain txt
+        one entity per line
+        versioning (look this up)
+        save using integers for more readable files?
 
-    cleanup loading/unloading game code
-        need to store the dll, so that we can unload it
-            make a struct that holds dll and function pointer and bool is_valid
+        click position
+            start drawing new rect from click pos to mouse
+            create obstacle on second click
 
+        save to file
 
-    then:
-        collision
-
-edit levels in game
-    plain txt
-    one entity per line
-    versioning (look this up)
+    arena.add()
+        send in data + size
+        check capacity before adding

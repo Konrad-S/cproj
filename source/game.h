@@ -40,15 +40,22 @@ struct Rectf {
     };
 };
 
-struct Input {
+struct Direction {
     bool up;
     bool right;
     bool down;
     bool left;
 };
+typedef Direction Input;
 
 struct Player {
     Rectf rect;
+    bool  grounded;
+    Vec2f velocity;
+};
+
+struct Collision_Info {
+    Direction sides_touched;
 };
 
 struct Frame_Info {
@@ -60,6 +67,7 @@ struct Frame_Info {
     u32     objects_count;
     Rectf*  collisions;
     u32     collisions_count;
+    Collision_Info collision_info;
 };
 
 //Rectf get_updated_player(Rectf last_player, Input input);
