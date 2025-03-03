@@ -158,7 +158,7 @@ u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
 }
 
 bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
-    assert(false);
+    assert(true);
     Frame_Info* this_frame = (Frame_Info*)frame_state->data;
     Player* player = &this_frame->player;
     *player = last_frame->player;

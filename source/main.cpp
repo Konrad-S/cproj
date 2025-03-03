@@ -39,14 +39,14 @@ FILETIME get_write_time(char* file) {
     return (write_time);
 }
 
-u32 read_entire_file_txt (Arena* arena, const char* file_path) {
-    HANDLE handle = CreateFile(file_path,
-                               GENERIC_READ,
-                               FILE_SHARE_READ,
-                               NULL,
-                               OPEN_EXISTING,
-                               FILE_ATTRIBUTE_NORMAL,
-                               NULL);
+u32 read_entire_file_txt(Arena* arena, const char* file_path) {
+    HANDLE handle = CreateFileA(file_path,
+                                GENERIC_READ,
+                                FILE_SHARE_READ,
+                                NULL,
+                                OPEN_EXISTING,
+                                FILE_ATTRIBUTE_NORMAL,
+                                NULL);
     
     bool do_read_file = handle != INVALID_HANDLE_VALUE;
     if (!do_read_file) {
@@ -60,7 +60,36 @@ u32 read_entire_file_txt (Arena* arena, const char* file_path) {
 
         }
     }
+    CloseHandle(handle);
     return bytes_read;
+}
+
+bool write_entire_file_txt(const char* file_path, const char* content, u32 content_length) {
+    HANDLE handle = CreateFileA(file_path,
+                                GENERIC_WRITE,
+                                FILE_SHARE_READ,
+                                NULL,
+                                CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_NORMAL,
+                                NULL);
+    bool success = handle != INVALID_HANDLE_VALUE;
+    if (!success) {
+        printf("Failed getting a handle to: %s\nError code: %d\n", file_path, GetLastError());
+    }
+    if (success) {
+        DWORD bytes_written;
+        success = WriteFile(handle, content, content_length, &bytes_written, NULL);
+        if (!success) {
+            printf("Failed writing to: %s\nError code:%d\n", file_path, GetLastError());
+        }
+        if (bytes_written < content_length)
+        {
+            printf("Failed to write all content to: %s\nWrote %d bytes of %dbytes total.", file_path, bytes_written, content_length);
+            success = false;
+        }
+    }
+    CloseHandle(handle);
+    return success;
 }
 
 Input get_updated_input(GLFWwindow* window, Input last_input) {
@@ -304,6 +333,9 @@ int main(void) {
     char* game_dll_filename = "game.dll";
     char* temp_game_dll_filename = "TEMP_game.dll";
     Game_Code game_code = load_game_code(game_dll_filename, temp_game_dll_filename);
+
+    write_entire_file_txt("test.txt", "1", 1);
+
     while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
         //
         // Get game DLL and game update procedure
