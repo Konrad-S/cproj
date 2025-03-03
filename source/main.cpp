@@ -296,7 +296,7 @@ int main(void) {
     this_frame->objects[2] = Rectf{ 8.0f, 5.0f, 1.0f, 3.0f };
     this_frame->objects[3] = Rectf{ 5.0f, 0.0f, 10.0f, 2.0f };
     this_frame->objects_count = 4;
-    frame_arena_0.current += sizeof(Rectf);
+    frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
 
 
     bool even_frame = false;

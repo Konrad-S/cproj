@@ -1,7 +1,21 @@
+#include <cstdio>
 #include <stdint.h>
 #include <math.h>
 
 #include "game.h"
+
+#if CPROJ_SLOW
+#define assert(expression) if (!(expression)) { *(int*)0 = 0; } 
+#else
+#define assert(expression) printf("not slow");
+#endif
+
+u8* arena_append(Arena* arena, u32 data_size) {
+    if (arena->current + data_size > arena->capacity) assert(false);
+    u8* result = arena->data + arena->current;
+    arena->current += data_size;
+    return result;
+}
 
 Vec2f move_pos(Vec2f last_pos, Input input) {
     Vec2f pos = last_pos;
@@ -138,12 +152,13 @@ u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
         // We could copy the whole thing, but in 
         // the future we want to do things in here
         this_frame[i] = last_frame->objects[i];
-        this_frame_arena->current++;
+        this_frame_arena->current += sizeof(this_frame[i]);
     }
     return i;
 }
 
 bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
+    assert(false);
     Frame_Info* this_frame = (Frame_Info*)frame_state->data;
     Player* player = &this_frame->player;
     *player = last_frame->player;
