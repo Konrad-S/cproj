@@ -1,4 +1,8 @@
 do next:
+    use arena append somewhere
+
+    think more about how arenas should be used
+
     edit levels in game
         plain txt
         one entity per line
@@ -10,6 +14,9 @@ do next:
             create obstacle on second click
 
         save to file
+
+            create entire file content (using a bunch of strings) at once
+            or write the file line by line
 
     arena.add()
         send in data + size
