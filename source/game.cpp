@@ -11,7 +11,7 @@
 #endif
 
 u8* arena_append(Arena* arena, u32 data_size) {
-    if (arena->current + data_size > arena->capacity) assert(false);
+    assert(arena->current + data_size <= arena->capacity);
     u8* result = arena->data + arena->current;
     arena->current += data_size;
     return result;

@@ -64,6 +64,40 @@ u32 read_entire_file_txt(Arena* arena, const char* file_path) {
     return bytes_read;
 }
 
+bool append_file_txt(const char* file_path, const char* content, const u32 content_length) {
+    HANDLE handle = CreateFileA(file_path,
+                                FILE_GENERIC_READ | FILE_APPEND_DATA,
+                                FILE_SHARE_READ,
+                                NULL,
+                                OPEN_EXISTING,
+                                FILE_ATTRIBUTE_NORMAL,
+                                NULL);
+    bool success = handle != INVALID_HANDLE_VALUE;
+    if (!success) {
+        printf("Failed getting a handle to: %s\nError code: %d\n", file_path, GetLastError());
+    }
+    if (success) {
+        DWORD bytes_written;
+        success = SetFilePointer(handle, 0, NULL, FILE_END);
+        if (!success) {
+            printf("Failed setting file pointer of: %s\nError code:%d\n", file_path, GetLastError());
+        }
+        success = WriteFile(handle, content, content_length, &bytes_written, NULL);
+        if (!success) {
+            printf("Failed writing to: %s\nError code:%d\n", file_path, GetLastError());
+        }
+        if (bytes_written < content_length)
+        {
+            printf("Failed to write all content to: %s\nWrote %d bytes of %d bytes total.", file_path, bytes_written, content_length);
+            success = false;
+        }
+    }
+    CloseHandle(handle);
+    return success;
+
+    return false;
+}
+
 bool write_entire_file_txt(const char* file_path, const char* content, u32 content_length) {
     HANDLE handle = CreateFileA(file_path,
                                 GENERIC_WRITE,
@@ -334,7 +368,7 @@ int main(void) {
     char* temp_game_dll_filename = "TEMP_game.dll";
     Game_Code game_code = load_game_code(game_dll_filename, temp_game_dll_filename);
 
-    write_entire_file_txt("test.txt", "1", 1);
+    append_file_txt("test.txt", "1\n", 2);
 
     while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
         //
