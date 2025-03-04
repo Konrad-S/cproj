@@ -30,26 +30,6 @@ void clear_arena(Arena* arena) {
     arena->current = 0;
 }
 
-u8* arena_append(Arena& arena, u32 data_size) {
-    assert(arena.current + data_size <= arena.capacity);
-    u8* result = arena.data + arena.current;
-    arena.current += data_size;
-    return result;
-}
-
-u8* arena_current(Arena& arena) {
-    return arena.data + arena.current;
-}
-
-u32 arena_remaining(Arena& arena) {
-    return arena.capacity - arena.current;
-}
-
-u32 serialize_rectf(Rectf& rect, char* const result, u32 max_count) {
-    u32 chars_written = snprintf(result, max_count, "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
-    return chars_written;
-}
-
 FILETIME get_write_time(char* file) {
     FILETIME write_time = {};
     WIN32_FILE_ATTRIBUTE_DATA data;

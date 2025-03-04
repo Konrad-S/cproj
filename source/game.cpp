@@ -132,11 +132,6 @@ Rectf try_move(Rectf player, Vec2f move, Rectf* others, u32 others_count, Collis
     return player;
 }
 
-u32 serialize_rectf(Rectf& rect, char* const result, u32 max_count) {
-    u32 chars_written = snprintf(result, max_count, "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
-    return chars_written;
-}
-
 u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
     Rectf* this_frame = (Rectf*)(this_frame_arena->data + this_frame_arena->current);
     u32 i = 0;

@@ -1,7 +1,10 @@
 do next:
-    use arena append somewhere
 
-    think more about how arenas should be used
+    think about how to split game and windows layer
+        stuff used in both goes in game.h for now
+
+        i should make a new arena.cpp that both include in their compilation units
+
 
     edit levels in game
         plain txt
