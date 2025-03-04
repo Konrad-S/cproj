@@ -4,19 +4,6 @@
 
 #include "game.h"
 
-#if CPROJ_SLOW
-#define assert(expression) if (!(expression)) { *(int*)0 = 0; } 
-#else
-#define assert(expression) printf("not slow");
-#endif
-
-u8* arena_append(Arena* arena, u32 data_size) {
-    assert(arena->current + data_size <= arena->capacity);
-    u8* result = arena->data + arena->current;
-    arena->current += data_size;
-    return result;
-}
-
 Vec2f move_pos(Vec2f last_pos, Input input) {
     Vec2f pos = last_pos;
     if (input.up) {
@@ -143,6 +130,11 @@ Rectf try_move(Rectf player, Vec2f move, Rectf* others, u32 others_count, Collis
         player.posy = most_extreme_edge - (player.radiusy + COLLISION_EPSILON) * sign;
     }
     return player;
+}
+
+u32 serialize_rectf(Rectf& rect, char* const result, u32 max_count) {
+    u32 chars_written = snprintf(result, max_count, "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
+    return chars_written;
 }
 
 u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {

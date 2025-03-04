@@ -30,6 +30,26 @@ void clear_arena(Arena* arena) {
     arena->current = 0;
 }
 
+u8* arena_append(Arena& arena, u32 data_size) {
+    assert(arena.current + data_size <= arena.capacity);
+    u8* result = arena.data + arena.current;
+    arena.current += data_size;
+    return result;
+}
+
+u8* arena_current(Arena& arena) {
+    return arena.data + arena.current;
+}
+
+u32 arena_remaining(Arena& arena) {
+    return arena.capacity - arena.current;
+}
+
+u32 serialize_rectf(Rectf& rect, char* const result, u32 max_count) {
+    u32 chars_written = snprintf(result, max_count, "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
+    return chars_written;
+}
+
 FILETIME get_write_time(char* file) {
     FILETIME write_time = {};
     WIN32_FILE_ATTRIBUTE_DATA data;
@@ -368,7 +388,10 @@ int main(void) {
     char* temp_game_dll_filename = "TEMP_game.dll";
     Game_Code game_code = load_game_code(game_dll_filename, temp_game_dll_filename);
 
-    append_file_txt("test.txt", "1\n", 2);
+    char* const serialized_buffer = (char* const)arena_current(persistent);
+    u32 serialized_count = serialize_rectf(this_frame->objects[1], serialized_buffer, arena_remaining(persistent));
+
+    append_file_txt("test.txt", serialized_buffer, serialized_count);
 
     while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
         //

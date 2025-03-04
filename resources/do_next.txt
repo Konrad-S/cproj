@@ -17,7 +17,3 @@ do next:
 
             create entire file content (using a bunch of strings) at once
             or write the file line by line
-
-    arena.add()
-        send in data + size
-        check capacity before adding

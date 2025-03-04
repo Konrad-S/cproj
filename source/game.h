@@ -12,6 +12,12 @@ typedef uint64_t u64;
 typedef float    f32;
 typedef double   f64;
 
+#if CPROJ_SLOW
+#define assert(expression) if (!(expression)) { *(int*)0 = 0; } 
+#else
+#define assert(expression) printf("not slow");
+#endif
+
 struct Arena {
     u8* data;
     u64 current;
