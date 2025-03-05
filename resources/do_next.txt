@@ -1,10 +1,5 @@
 do next:
-
-    think about how to split game and windows layer
-        stuff used in both goes in game.h for now
-
-        i should make a new arena.cpp that both include in their compilation units
-
+    read saved rects
 
     edit levels in game
         plain txt

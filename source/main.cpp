@@ -126,6 +126,12 @@ bool write_entire_file_txt(const char* file_path, const char* content, u32 conte
     return success;
 }
 
+bool parse_savefile(const char* text, u32 text_size, Rectf* result) {
+    u32 result_count;
+    
+    return result_count;
+}
+
 Input get_updated_input(GLFWwindow* window, Input last_input) {
     // Last input will be needed when input handling is more robust, e.g. held vs pressed.
     Input input = { false, false, false, false};
