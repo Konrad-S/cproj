@@ -5,7 +5,7 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-#include "game.h"
+#include "game.cpp"
 
 typedef bool (*Update_Game)(Arena*, Frame_Info*, Arena*);
 

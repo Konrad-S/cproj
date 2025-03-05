@@ -1,5 +1,6 @@
 #ifndef GAME_H
-#define GAME_H
+
+#include <stdint.h>
 
 typedef int8_t   s8;
 typedef int16_t  s16;
@@ -76,29 +77,10 @@ struct Frame_Info {
     Collision_Info collision_info;
 };
 
-u8* arena_current(Arena& arena) {
-    return arena.data + arena.current;
-}
-
-u8* arena_append(Arena& arena, u32 data_size) {
-    assert(arena.current + data_size <= arena.capacity);
-    u8* result = arena.data + arena.current;
-    arena.current += data_size;
-    return result;
-}
-
-u32 arena_remaining(Arena& arena) {
-    return arena.capacity - arena.current;
-}
-
-u32 serialize_rectf(Rectf& rect, char* const result, u32 max_count) {
-    u32 chars_written = snprintf(result, max_count, "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
-    return chars_written;
-}
-
 //Rectf get_updated_player(Rectf last_player, Input input);
 extern "C" {
     __declspec(dllexport) bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state);
 }
 
+#define GAME_H
 #endif

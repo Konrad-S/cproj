@@ -1,8 +1,30 @@
 #include <cstdio>
-#include <stdint.h>
 #include <math.h>
-
 #include "game.h"
+
+//
+// Arena
+//
+
+u8* arena_current(Arena& arena) {
+    return arena.data + arena.current;
+}
+
+u8* arena_append(Arena& arena, u32 data_size) {
+    assert(arena.current + data_size <= arena.capacity);
+    u8* result = arena.data + arena.current;
+    arena.current += data_size;
+    return result;
+}
+
+u32 arena_remaining(Arena& arena) {
+    return arena.capacity - arena.current;
+}
+
+u32 serialize_rectf(Rectf& rect, char* const result, u32 max_count) {
+    u32 chars_written = snprintf(result, max_count, "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
+    return chars_written;
+}
 
 Vec2f move_pos(Vec2f last_pos, Input input) {
     Vec2f pos = last_pos;
@@ -20,6 +42,10 @@ Vec2f move_pos(Vec2f last_pos, Input input) {
     }
     return pos;
 }
+
+//
+// Game
+//
 
 const f32 JUMP_VELOCITY = .2f;
 const f32 GRAVITY = .005f;
@@ -49,8 +75,8 @@ Vec2f get_player_pos_delta(Player* player, Input input, Collision_Info last_info
 }
 
 Rectf rectf_overlap(Rectf a, Rectf b) {
-    f32 half_overlap_x  = (a.radiusx + b.radiusx - fabs(a.posx - b.posx)) / 2;
-    f32 half_overlap_y = (a.radiusy + b.radiusy - fabs(a.posy - b.posy)) / 2;
+    f32 half_overlap_x  = (a.radiusx + b.radiusx - fabsf(a.posx - b.posx)) / 2;
+    f32 half_overlap_y = (a.radiusy + b.radiusy - fabsf(a.posy - b.posy)) / 2;
     
     f32 cposx;
     if (a.posx > b.posx) {
@@ -81,8 +107,8 @@ u32 get_overlaps(Rectf rect, Rectf* others, u32 others_count, Rectf* results) {
 }
 
 bool check_collided(Rectf a, Rectf b) {
-    f32 overlap_x  = (a.radiusx + b.radiusx - fabs(a.posx - b.posx));
-    f32 overlap_y = (a.radiusy + b.radiusy - fabs(a.posy - b.posy));
+    f32 overlap_x  = (a.radiusx + b.radiusx - fabsf(a.posx - b.posx));
+    f32 overlap_y = (a.radiusy + b.radiusy - fabsf(a.posy - b.posy));
     return (overlap_x > 0 && overlap_y > 0);
 }
 
