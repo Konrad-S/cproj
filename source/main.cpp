@@ -128,7 +128,7 @@ bool write_entire_file_txt(const char* file_path, const char* content, u32 conte
 
 // Idea: Loop over entire text and get list of indices of new lines
 // Seems like a good way to deal with incorrect entries
-#define RECT_START "Rectf: "
+#define RECT_START "Rectf:"
 #define RECT_POSX " posx="
 #define RECT_POSY " posy="
 #define RECT_RADIUSX " radiusx="
@@ -200,6 +200,27 @@ Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
         input.left = true;
     }
     return input;
+}
+
+Mouse get_updated_mouse(GLFWwindow* window, Mouse last) {
+    // Last input will be needed when input handling is more robust, e.g. held vs pressed.
+
+    f64 posx, posy;
+    bool left = false, right = false;
+    glfwGetCursorPos(window, &posx, &posy);
+    int sizex, sizey;
+    glfwGetWindowSize(window, &sizex, &sizey);
+    posy = sizey - posy;
+
+    u32 state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+    if (state == GLFW_PRESS) {
+        left = true;
+    }
+    state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT);
+    if (state == GLFW_PRESS) {
+        right = true;
+    }
+    return Mouse{ posx, posy, left, right };
 }
 
 struct Game_Code {
@@ -376,24 +397,17 @@ int main(void) {
     f32 scale = .01f;
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     
-    //    
+    //
     // Setup game state
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
     this_frame->player.rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
 
-    this_frame->objects = (Rectf*)(frame_arena_0.data + frame_arena_0.current);
-    this_frame->objects[0] = Rectf{ 5.0f, 5.0f, 2.0f, 2.0f };
-    this_frame->objects[1] = Rectf{ 9.0f, 5.0f, .9f, .1f };
-    this_frame->objects[2] = Rectf{ 8.0f, 5.0f, 1.0f, 3.0f };
-    this_frame->objects[3] = Rectf{ 5.0f, 0.0f, 10.0f, 2.0f };
-    this_frame->objects_count = 4;
-
-    frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
-
+    this_frame->objects = (Rectf*)arena_current(frame_arena_0);
     u32 file_size = read_entire_file(persistent, "test.txt");
     this_frame->objects_count = parse_savefile((char*)arena_current(persistent), file_size, this_frame->objects);
+    frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
 
     bool even_frame = false;
     bool game_wants_to_keep_running = true;
@@ -432,6 +446,8 @@ int main(void) {
 
         this_frame->input        = get_updated_input(window, last_frame->input);
         this_frame->camera_input = get_updated_camera_input(window, last_frame->camera_input);
+        this_frame->mouse        = get_updated_mouse(window, last_frame->mouse);
+        if (this_frame->mouse.left) printf("posx:%f posy:%f\n", this_frame->mouse.posx * .02f, this_frame->mouse.posy * .02f);
         game_wants_to_keep_running = game_code.update_function(frame_arena, last_frame, &persistent);
 
         float time = glfwGetTime();

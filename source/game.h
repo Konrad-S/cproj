@@ -53,7 +53,15 @@ struct Direction {
     bool down;
     bool left;
 };
+
 typedef Direction Input;
+
+struct Mouse {
+    f64 posx;
+    f64 posy;
+    bool left;
+    bool right;
+};
 
 struct Player {
     Rectf rect;
@@ -70,6 +78,7 @@ struct Frame_Info {
     Input   input;
     Vec2f   camera_pos;
     Input   camera_input;
+    Mouse   mouse;
     Rectf*  objects;
     u32     objects_count;
     Rectf*  collisions;
