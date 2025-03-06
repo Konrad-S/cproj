@@ -39,7 +39,7 @@ FILETIME get_write_time(char* file) {
     return (write_time);
 }
 
-u32 read_entire_file_txt(Arena* arena, const char* file_path) {
+u32 read_entire_file(Arena arena, const char* file_path) {
     HANDLE handle = CreateFileA(file_path,
                                 GENERIC_READ,
                                 FILE_SHARE_READ,
@@ -54,7 +54,7 @@ u32 read_entire_file_txt(Arena* arena, const char* file_path) {
     }
     DWORD bytes_read = 0;
     if (do_read_file) {
-        bool success = ReadFile(handle, arena->data, arena->capacity - arena->current, &bytes_read, NULL);
+        bool success = ReadFile(handle, arena.data, arena.capacity - arena.current, &bytes_read, NULL);
         if (!success) {
             printf("Failed reading from: %s\nError code: %d\n", file_path, GetLastError());
 
@@ -126,23 +126,34 @@ bool write_entire_file_txt(const char* file_path, const char* content, u32 conte
     return success;
 }
 
+// Idea: Loop over entire text and get list of indices of new lines
+// Seems like a good way to deal with incorrect entries
 #define RECT_START "Rectf: "
+#define RECT_POSX " posx="
+#define RECT_POSY " posy="
+#define RECT_RADIUSX " radiusx="
+#define RECT_RADIUSY " radiusy="
 #define LENGTH(s) (sizeof(s) - 1)
-bool parse_savefile(const char* text, u32 text_size, Rectf* result) {
-    u32 count;
-
-    u32 start_size = LENGTH(RECT_START)
-    if (memcmp(text, RECT_START, start_size) == 0) {
-        count += start_size;
-        strtof(text + count)
+u32 parse_savefile(char* text_start, u32 text_size, Rectf* result) {
+    u32 count = 0;
+    char* text = text_start;
+    u32 start_size = LENGTH(RECT_START);
+    while (true) {
+        if (memcmp(text, RECT_START, start_size) == 0) {
+            text += start_size;
+            f32 posx    = strtof(text + LENGTH(RECT_POSX), &text);
+            f32 posy    = strtof(text + LENGTH(RECT_POSY), &text);
+            f32 radiusx = strtof(text + LENGTH(RECT_RADIUSX), &text);
+            f32 radiusy = strtof(text + LENGTH(RECT_RADIUSY), &text);
+            result[count++] = Rectf{ posx, posy, radiusx, radiusy };
+        }
+        while (true) {
+            if (text - text_start + 1 >= text_size) return count;
+            if (text[0] == '\n') break;
+            ++text;
+        }
+        ++text;
     }
-
-    for (u32 lines = 0; i < text_size; ++i) {
-
-    }
-    strtof
-
-    return result_count;
 }
 
 Input get_updated_input(GLFWwindow* window, Input last_input) {
@@ -302,7 +313,7 @@ int main(void) {
     //
     // Load shaders
     u32 start_of_shader_text = persistent.current;
-    u32 bytes_read = read_entire_file_txt(&persistent, "../assets/vertex.txt");
+    u32 bytes_read = read_entire_file(persistent, "../assets/vertex.txt");
     if (bytes_read == 0) {
         printf("Failed to get vertex shader, exiting...");
         return -1;
@@ -326,7 +337,7 @@ int main(void) {
         printf("Vertex shader compilation error:\n%s", error_info);
         return -1;
     }
-    bytes_read = read_entire_file_txt(&persistent, "../assets/fragment.txt");
+    bytes_read = read_entire_file(persistent, "../assets/fragment.txt");
     const GLchar* fragment_shader_source = (GLchar*) persistent.data + start_of_shader_text;
     if (bytes_read == 0) {
         printf("Failed to get fragment shader, exiting...");
@@ -378,8 +389,11 @@ int main(void) {
     this_frame->objects[2] = Rectf{ 8.0f, 5.0f, 1.0f, 3.0f };
     this_frame->objects[3] = Rectf{ 5.0f, 0.0f, 10.0f, 2.0f };
     this_frame->objects_count = 4;
+
     frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
 
+    u32 file_size = read_entire_file(persistent, "test.txt");
+    this_frame->objects_count = parse_savefile((char*)arena_current(persistent), file_size, this_frame->objects);
 
     bool even_frame = false;
     bool game_wants_to_keep_running = true;
@@ -387,10 +401,10 @@ int main(void) {
     char* temp_game_dll_filename = "TEMP_game.dll";
     Game_Code game_code = load_game_code(game_dll_filename, temp_game_dll_filename);
 
-    char* const serialized_buffer = (char* const)arena_current(persistent);
-    u32 serialized_count = serialize_rectf(this_frame->objects[1], serialized_buffer, arena_remaining(persistent));
+    //char* const serialized_buffer = (char* const)arena_current(persistent);
+    //u32 serialized_count = serialize_rectf(this_frame->objects[1], serialized_buffer, arena_remaining(persistent));
 
-    append_file_txt("test.txt", serialized_buffer, serialized_count);
+    //append_file_txt("test.txt", serialized_buffer, serialized_count);
 
     while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
         //
