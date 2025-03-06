@@ -126,9 +126,22 @@ bool write_entire_file_txt(const char* file_path, const char* content, u32 conte
     return success;
 }
 
+#define RECT_START "Rectf: "
+#define LENGTH(s) (sizeof(s) - 1)
 bool parse_savefile(const char* text, u32 text_size, Rectf* result) {
-    u32 result_count;
-    
+    u32 count;
+
+    u32 start_size = LENGTH(RECT_START)
+    if (memcmp(text, RECT_START, start_size) == 0) {
+        count += start_size;
+        strtof(text + count)
+    }
+
+    for (u32 lines = 0; i < text_size; ++i) {
+
+    }
+    strtof
+
     return result_count;
 }
 
