@@ -19,6 +19,8 @@ typedef double   f64;
 #define assert(expression) printf("not slow");
 #endif
 
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 struct Arena {
     u8* data;
     u64 current;
@@ -30,14 +32,10 @@ struct Vec2f {
     f32 y;
 };
 
+#define POS_F32 union { Vec2f pos; struct { f32 posx; f32 posy; }; }
+
 struct Rectf {
-    union {
-        Vec2f pos;
-        struct {
-            f32 posx;
-            f32 posy;
-        };
-    };
+    POS_F32;
     union {
         Vec2f radius;
         struct {
@@ -57,8 +55,7 @@ struct Direction {
 typedef Direction Input;
 
 struct Mouse {
-    f64 posx;
-    f64 posy;
+    POS_F32;
     bool left;
     bool right;
 };
@@ -73,10 +70,17 @@ struct Collision_Info {
     Direction sides_touched;
 };
 
+struct Drawing_Obstacle {
+    bool active;
+    POS_F32;
+};
+
 struct Frame_Info {
     Player  player;
     Input   input;
     Vec2f   camera_pos;
+    f32     camera_scale;
+    Drawing_Obstacle drawing;
     Input   camera_input;
     Mouse   mouse;
     Rectf*  objects;
@@ -84,6 +88,11 @@ struct Frame_Info {
     Rectf*  collisions;
     u32     collisions_count;
     Collision_Info collision_info;
+};
+
+struct Game_Info {
+    // Stuff in Frame_Info that we always copy over without modification
+    // and we don't care what the previous frames value was, should go here instead.
 };
 
 //Rectf get_updated_player(Rectf last_player, Input input);

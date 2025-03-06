@@ -67,7 +67,7 @@ Vec2f get_player_pos_delta(Player* player, Input input, Collision_Info last_info
         }
     }
 
-    player->velocity.y -= GRAVITY;
+    //player->velocity.y -= GRAVITY;
     if (player->velocity.y < -TERMINAL_VELOCITY) player->velocity.y = -TERMINAL_VELOCITY;
     pos.y += player->velocity.y;
     
@@ -170,8 +170,41 @@ u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
     return i;
 }
 
+Rectf points_to_rect(Vec2f a, Vec2f b) {
+    f32 width = fabs(a.x - b.x);
+    f32 height = fabs(a.y - b.y);
+
+    f32 botx = MIN(a.x, b.x);
+    f32 boty = MAX(a.y, b.y);
+    return Rectf{ botx + width, boty + height, width, height };
+}
+
+Rectf scale_rect(Rectf r, f32 scale) {
+    return Rectf{ r.posx * scale, r.posy * scale, r.radiusx * scale, r.radiusy * scale };
+}
+Rectf move_rect(Rectf r, Vec2f dist) {
+    return Rectf{ r.posx + dist.x, r.posy + dist.y, r.radius };
+}
+
+u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse mouse, Vec2f camera_pos, f32 camera_scale, Rectf* data) {
+    if (mouse.right) {
+        drawing.active = false;
+        return 0;
+    }
+    if (!mouse.left) return 0;
+    if (!drawing.active) {
+        drawing.active = true;
+        drawing.pos = mouse.pos;
+        return 0;
+    }
+    Rectf screen_rect = points_to_rect(drawing.pos, mouse.pos);
+    Rectf scaled_rect = scale_rect(screen_rect, camera_scale);
+    *data = move_rect(scaled_rect, camera_pos);
+    drawing.active = false;
+    return 1;
+}
+
 bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
-    assert(true);
     Frame_Info* this_frame = (Frame_Info*)frame_state->data;
     Player* player = &this_frame->player;
     *player = last_frame->player;
@@ -180,5 +213,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     this_frame->objects_count = update_objects(last_frame, frame_state);
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
     player->rect = try_move(player->rect, player_delta, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
+    
+    this_frame->objects_count += draw_obstacle(this_frame->drawing, this_frame->mouse, this_frame->camera_pos, this_frame->camera_scale, this_frame->objects + this_frame->objects_count);
+
     return true;
 }

@@ -220,7 +220,7 @@ Mouse get_updated_mouse(GLFWwindow* window, Mouse last) {
     if (state == GLFW_PRESS) {
         right = true;
     }
-    return Mouse{ posx, posy, left, right };
+    return Mouse{ (f32)posx, (f32)posy, left, right };
 }
 
 struct Game_Code {
@@ -402,6 +402,7 @@ int main(void) {
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
+    this_frame->camera_scale = scale * 2;
     this_frame->player.rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
 
     this_frame->objects = (Rectf*)arena_current(frame_arena_0);
@@ -447,7 +448,9 @@ int main(void) {
         this_frame->input        = get_updated_input(window, last_frame->input);
         this_frame->camera_input = get_updated_camera_input(window, last_frame->camera_input);
         this_frame->mouse        = get_updated_mouse(window, last_frame->mouse);
-        if (this_frame->mouse.left) printf("posx:%f posy:%f\n", this_frame->mouse.posx * .02f, this_frame->mouse.posy * .02f);
+        this_frame->camera_scale = last_frame->camera_scale;
+        this_frame->drawing      = last_frame->drawing;
+        if (this_frame->mouse.left) printf("posx:%f posy:%f\n", this_frame->mouse.posx * this_frame->camera_scale, this_frame->mouse.posy * this_frame->camera_scale);
         game_wants_to_keep_running = game_code.update_function(frame_arena, last_frame, &persistent);
 
         float time = glfwGetTime();
