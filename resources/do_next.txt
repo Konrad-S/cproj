@@ -1,11 +1,19 @@
 do next:
-    read saved rects
+    better input handling
+        each input, each frame, needs:
+            number of presses
+            number of releases
+            held
+
+        maybe
+            multiple press/release in one frame
+            order of all inputs within one frame
+
 
     edit levels in game
-        plain txt
-        one entity per line
-        versioning (look this up)
-        save using integers for more readable files?
+        versioning
+            @v1
+                etc
 
         click position
             start drawing new rect from click pos to mouse

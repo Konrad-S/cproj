@@ -25,3 +25,24 @@ what makes this idea good:
         easy enemies can be a good thing since the feeling of mastery is good. This game wouldn't have the traditional power fantasy goodness
 
 Another idea is that you instead learn to use your tools in a more advanced way, which unlocks new parts of the game.
+
+
+
+
+
+//
+// Color fight
+//
+You start as blue in the blue village. Everyone is blue here. Venturing outside the safety of blue, the world starts shifting to shades of blue.
+Creatures of other colors start appearing and they don't like you. Being touched by them changes tints your color towards theirs.
+Creature's disposition towards you depend on how well your color matches theirs.
+Full aggression -> will attack if you get close -> neutral -> friendly -> you are one of them
+There would be some reason to reach a village while you are not their color, and defeat their leader.
+
+But the game could seem very friendly to a casual player, as they will probably become at least neutral before reaching the village, and won't have to do any challenging fights.
+Being attacked would never fully bring you to another color, as they will stop attacking once you are tinted enough.
+Villages will have a way for you to fully become their color. "You should really go blue yourself" - Blue villager to player
+
+Combat introduction: "Red gnats are crawling out of that hole, go get rid of them. Try not to get red on you, but if you do come back here to get Blue."
+
+Should stuff fight you past the midpoint of two colors? If you go back and forth between a red and blue guy, do they keep hitting you, or are both neutral? 
