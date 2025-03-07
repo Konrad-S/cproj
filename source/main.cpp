@@ -14,16 +14,85 @@ void error_callback(int error, const char* description) {
     fprintf(stderr, "Error: %s\n", description);
 }
 
-// Key callback function
+Input global_inputs[INPUT_COUNT] = {};
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+    if (key < 0) return;
+    InputAction input_key;
+    switch(key) {
+        case GLFW_KEY_E:
+            input_key = InputAction::UP;
+            break;
+        case GLFW_KEY_F:
+            input_key = InputAction::RIGHT;
+            break;
+        case GLFW_KEY_D:
+            input_key = InputAction::DOWN;
+            break;
+        case GLFW_KEY_S:
+            input_key = InputAction::LEFT;
+            break;
+        case GLFW_KEY_I:
+            input_key = InputAction::CAM_UP;
+            break;
+        case GLFW_KEY_L:
+            input_key = InputAction::CAM_RIGHT;
+            break;
+        case GLFW_KEY_K:
+            input_key = InputAction::CAM_DOWN;
+            break;
+        case GLFW_KEY_J:
+            input_key = InputAction::CAM_LEFT;
+            break;
+        case GLFW_KEY_ESCAPE:
+            glfwSetWindowShouldClose(window, 1);
+            return;
+        default:
+            return;
     }
-    switch (key) {
-    if (action != GLFW_PRESS) return;
-    case GLFW_KEY_ESCAPE:
-        glfwSetWindowShouldClose(window, 1);
+    Input* input = global_inputs + input_key;
+    if (action == GLFW_PRESS)
+    {
+        input->presses++;
+        input->down = true;
+    }
+    else if (action == GLFW_RELEASE) {
+        input->releases++;
+        input->down = false;
     }
 }
+
+Mouse global_mouse = {};
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    if (button < 0) return;
+    Input* input;
+    switch(button) {
+        case GLFW_MOUSE_BUTTON_LEFT:
+            input = &global_mouse.left;
+            break;
+        case GLFW_KEY_F:
+            input = &global_mouse.right;
+            break;
+        default:
+            return;
+    }
+    if (action == GLFW_PRESS)
+    {
+        input->presses++;
+        input->down = true;
+    }
+    else if (action == GLFW_RELEASE) {
+        input->releases++;
+        input->down = false;
+    }
+}
+
+void cursor_position_callback(GLFWwindow* window, double posx, double posy) {
+    int width, height;
+    glfwGetWindowSize(window, &width, &height);
+    global_mouse.posx = (f32)posx;
+    global_mouse.posy = height - (f32)posy;
+}
+
 
 void clear_arena(Arena* arena) {
     memset(arena->data, 0, arena->capacity);
@@ -156,71 +225,12 @@ u32 parse_savefile(char* text_start, u32 text_size, Rectf* result) {
     }
 }
 
-Input get_updated_input(GLFWwindow* window, Input last_input) {
-    // Last input will be needed when input handling is more robust, e.g. held vs pressed.
-    Input input = { false, false, false, false};
-
-    int state = glfwGetKey(window, GLFW_KEY_E);
-    if (state == GLFW_PRESS) {
-        input.up = true;
+void transfer_input(Input* input) {
+    memcpy(input, global_inputs, INPUT_SIZE);
+    for (int i = 0; i < INPUT_COUNT; ++i) {
+        global_inputs[i].presses = 0;
+        global_inputs[i].releases = 0;
     }
-    state = glfwGetKey(window, GLFW_KEY_F);
-    if (state == GLFW_PRESS) {
-        input.right = true;
-    }
-    state = glfwGetKey(window, GLFW_KEY_D);
-    if (state == GLFW_PRESS) {
-        input.down = true;
-    }
-    state = glfwGetKey(window, GLFW_KEY_S);
-    if (state == GLFW_PRESS) {
-        input.left = true;
-    }
-    return input;
-}
-
-Input get_updated_camera_input(GLFWwindow* window, Input last_input) {
-    // Last input will be needed when input handling is more robust, e.g. held vs pressed.
-    Input input = { false, false, false, false};
-
-    int state = glfwGetKey(window, GLFW_KEY_I);
-    if (state == GLFW_PRESS) {
-        input.up = true;
-    }
-    state = glfwGetKey(window, GLFW_KEY_L);
-    if (state == GLFW_PRESS) {
-        input.right = true;
-    }
-    state = glfwGetKey(window, GLFW_KEY_K);
-    if (state == GLFW_PRESS) {
-        input.down = true;
-    }
-    state = glfwGetKey(window, GLFW_KEY_J);
-    if (state == GLFW_PRESS) {
-        input.left = true;
-    }
-    return input;
-}
-
-Mouse get_updated_mouse(GLFWwindow* window, Mouse last) {
-    // Last input will be needed when input handling is more robust, e.g. held vs pressed.
-
-    f64 posx, posy;
-    bool left = false, right = false;
-    glfwGetCursorPos(window, &posx, &posy);
-    int sizex, sizey;
-    glfwGetWindowSize(window, &sizex, &sizey);
-    posy = sizey - posy;
-
-    u32 state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-    if (state == GLFW_PRESS) {
-        left = true;
-    }
-    state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT);
-    if (state == GLFW_PRESS) {
-        right = true;
-    }
-    return Mouse{ (f32)posx, (f32)posy, left, right };
 }
 
 struct Game_Code {
@@ -288,6 +298,8 @@ int main(void) {
     }
     glViewport(0, 0, screen_width, screen_height);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
     glfwSwapInterval(1);
 
     glEnable(GL_BLEND);
@@ -445,12 +457,12 @@ int main(void) {
         frame_arena->current += sizeof(Frame_Info);
         this_frame = (Frame_Info*)frame_arena->data;
 
-        this_frame->input        = get_updated_input(window, last_frame->input);
-        this_frame->camera_input = get_updated_camera_input(window, last_frame->camera_input);
-        this_frame->mouse        = get_updated_mouse(window, last_frame->mouse);
+        transfer_input(this_frame->input);
+
+        this_frame->mouse        = &global_mouse;
         this_frame->camera_scale = last_frame->camera_scale;
         this_frame->drawing      = last_frame->drawing;
-        if (this_frame->mouse.left) printf("posx:%f posy:%f\n", this_frame->mouse.posx * this_frame->camera_scale, this_frame->mouse.posy * this_frame->camera_scale);
+        if (this_frame->mouse->left.down) printf("posx:%f posy:%f\n", this_frame->mouse->posx * this_frame->camera_scale, this_frame->mouse->posy * this_frame->camera_scale);
         game_wants_to_keep_running = game_code.update_function(frame_arena, last_frame, &persistent);
 
         float time = glfwGetTime();
@@ -480,6 +492,8 @@ int main(void) {
         }
 
         glfwSwapBuffers(window);
+        global_mouse.left.presses = 0;
+        global_mouse.right.releases = 0;
         glfwPollEvents();
         even_frame = !even_frame;
     }

@@ -52,12 +52,30 @@ struct Direction {
     bool left;
 };
 
-typedef Direction Input;
+enum InputAction {
+    UP,
+    RIGHT,
+    DOWN,
+    LEFT,
+    CAM_UP,
+    CAM_RIGHT,
+    CAM_DOWN,
+    CAM_LEFT,
+    ENUM_COUNT,
+};
+#define INPUT_COUNT (InputAction::ENUM_COUNT)
+#define INPUT_SIZE (INPUT_COUNT * sizeof(Input))
+
+struct Input {
+    u32  presses;
+    u32  releases;
+    bool down;
+};
 
 struct Mouse {
     POS_F32;
-    bool left;
-    bool right;
+    Input left;
+    Input right;
 };
 
 struct Player {
@@ -77,12 +95,11 @@ struct Drawing_Obstacle {
 
 struct Frame_Info {
     Player  player;
-    Input   input;
+    Input   input[INPUT_COUNT];
     Vec2f   camera_pos;
     f32     camera_scale;
     Drawing_Obstacle drawing;
-    Input   camera_input;
-    Mouse   mouse;
+    Mouse*  mouse;
     Rectf*  objects;
     u32     objects_count;
     Rectf*  collisions;
