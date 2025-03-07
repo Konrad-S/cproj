@@ -4,6 +4,7 @@
 		{
 			"path": ".",
 			"file_include_patterns": ["build.bat", "*.h", "*.cpp", "*.txt"],
+			"folder_exclude_patterns": ["dependencies"],
 		},
 	],
 }
