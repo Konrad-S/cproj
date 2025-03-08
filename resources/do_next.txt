@@ -1,7 +1,5 @@
 do next:
-    fix drawn pos and size
-    draw from mouse down to mouse up
-    remove with right click
+    epsilon, cull obstacles that are smaller when writing them between frames
 
     hotkey to save to file
 
