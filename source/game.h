@@ -61,6 +61,7 @@ enum InputAction {
     CAM_RIGHT,
     CAM_DOWN,
     CAM_LEFT,
+    EDITOR_SAVE,
     ENUM_COUNT,
 };
 #define INPUT_COUNT (InputAction::ENUM_COUNT)
