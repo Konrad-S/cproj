@@ -170,7 +170,7 @@ bool append_file_txt(const char* file_path, const char* content, const u32 conte
     return false;
 }
 
-bool write_entire_file_txt(const char* file_path, const char* content, u32 content_length) {
+bool write_entire_file(const char* file_path, const char* content, u32 content_length) {
     HANDLE handle = CreateFileA(file_path,
                                 GENERIC_WRITE,
                                 FILE_SHARE_READ,
@@ -403,6 +403,7 @@ int main(void) {
     glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
     glUseProgram(shader_program);
+    persistent.current = 0;
 
     GLuint offset_location = glGetUniformLocation(shader_program, "offset");
     GLuint world_scale_location = glGetUniformLocation(shader_program, "world_scale");
@@ -424,6 +425,12 @@ int main(void) {
     u32 file_size = read_entire_file(persistent, "test.txt");
     this_frame->objects_count = parse_savefile((char*)arena_current(persistent), file_size, this_frame->objects);
     frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
+
+    persistent.current = 0; // Game_Info is stored at start of the persistent arena
+    Game_Info* game_info = (Game_Info*)arena_append(&persistent, sizeof(Game_Info));
+    game_info->platform_read_entire_file = read_entire_file;
+    game_info->platform_write_entire_file = write_entire_file; 
+
 
     bool even_frame = false;
     bool game_wants_to_keep_running = true;

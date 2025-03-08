@@ -2,6 +2,9 @@ do next:
     epsilon, cull obstacles that are smaller when writing them between frames
 
     hotkey to save to file
+        do same for write as for read
+            then write from game
+                need to move more stuff to game
 
     edit levels in game
         versioning

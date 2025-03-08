@@ -6,23 +6,25 @@
 // Arena
 //
 
-u8* arena_current(Arena& arena) {
+
+// these should use void *
+u8* arena_current(Arena arena) {
     return arena.data + arena.current;
 }
 
-u8* arena_append(Arena& arena, u32 data_size) {
-    assert(arena.current + data_size <= arena.capacity);
-    u8* result = arena.data + arena.current;
-    arena.current += data_size;
+u8* arena_append(Arena* arena, u32 data_size) {
+    assert(arena->current + data_size <= arena->capacity);
+    u8* result = arena->data + arena->current;
+    arena->current += data_size;
     return result;
 }
 
-u32 arena_remaining(Arena& arena) {
+u32 arena_remaining(Arena arena) {
     return arena.capacity - arena.current;
 }
 
-u32 serialize_rectf(Rectf& rect, char* const result, u32 max_count) {
-    u32 chars_written = snprintf(result, max_count, "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
+u32 serialize_rectf(Rectf* rect, Arena arena) {
+    u32 chars_written = snprintf((char* const)arena_current(arena), arena_remaining(arena), "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect->posx, rect->posy, rect->radiusx, rect->radiusy);
     return chars_written;
 }
 
@@ -235,6 +237,7 @@ void erase_obstacle(Mouse* mouse, Rectf* obstacles, u32 obstacles_count, Camera 
 
 bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
     Frame_Info* this_frame = (Frame_Info*)frame_state->data;
+    Game_Info* game_info = (Game_Info*)persistent_state->data;
     Player* player = &this_frame->player;
     *player = last_frame->player;
     this_frame->camera.pos = move_camera(last_frame->camera.pos, this_frame->input);
@@ -245,6 +248,10 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     
     this_frame->objects_count += draw_obstacle(this_frame->drawing, this_frame->mouse, this_frame->camera, this_frame->objects + this_frame->objects_count);
     erase_obstacle(this_frame->mouse, this_frame->objects, this_frame->objects_count, this_frame->camera);
+    if (this_frame->input[InputAction::EDITOR_SAVE].presses) {
+        u32 serialized_count = serialize_rectf(this_frame->objects, *persistent_state);
+        game_info->platform_write_entire_file("test_write.txt", (const char*)arena_current(*persistent_state), serialized_count);
+    }
 
     return true;
 }

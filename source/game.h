@@ -112,10 +112,16 @@ struct Frame_Info {
     Collision_Info collision_info;
 };
 
+typedef u32  (*Platform_Read_Entire_File)(Arena, const char*);
+typedef bool (*Platform_Write_Entire_File)(const char*, const char*, u32);
+
 struct Game_Info {
+    Platform_Read_Entire_File platform_read_entire_file;
+    Platform_Write_Entire_File platform_write_entire_file;
     // Stuff in Frame_Info that we always copy over without modification
     // and we don't care what the previous frames value was, should go here instead.
 };
+
 
 //Rectf get_updated_player(Rectf last_player, Input input);
 extern "C" {
