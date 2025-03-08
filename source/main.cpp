@@ -410,7 +410,7 @@ int main(void) {
     GLuint scale_location = glGetUniformLocation(shader_program, "scale");
     GLuint camera_location = glGetUniformLocation(shader_program, "camera");
     GLuint color_location = glGetUniformLocation(shader_program, "color");
-    f32 scale = .01f;
+    f32 scale = .05f;
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     
     //

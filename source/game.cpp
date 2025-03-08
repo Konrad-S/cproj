@@ -23,8 +23,8 @@ u32 arena_remaining(Arena arena) {
     return arena.capacity - arena.current;
 }
 
-u32 serialize_rectf(Rectf* rect, Arena arena) {
-    u32 chars_written = snprintf((char* const)arena_current(arena), arena_remaining(arena), "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect->posx, rect->posy, rect->radiusx, rect->radiusy);
+u32 serialize_rectf(Rectf rect, Arena arena) {
+    u32 chars_written = snprintf((char* const)arena_current(arena), arena_remaining(arena), "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
     return chars_written;
 }
 
@@ -69,7 +69,7 @@ Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_inf
         }
     }
 
-    //player->velocity.y -= GRAVITY;
+    player->velocity.y -= GRAVITY;
     if (player->velocity.y < -TERMINAL_VELOCITY) player->velocity.y = -TERMINAL_VELOCITY;
     pos.y += player->velocity.y;
     
@@ -249,8 +249,15 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     this_frame->objects_count += draw_obstacle(this_frame->drawing, this_frame->mouse, this_frame->camera, this_frame->objects + this_frame->objects_count);
     erase_obstacle(this_frame->mouse, this_frame->objects, this_frame->objects_count, this_frame->camera);
     if (this_frame->input[InputAction::EDITOR_SAVE].presses) {
-        u32 serialized_count = serialize_rectf(this_frame->objects, *persistent_state);
-        game_info->platform_write_entire_file("test_write.txt", (const char*)arena_current(*persistent_state), serialized_count);
+        u32 persistent_reset = persistent_state->current;
+        u32 total_length = 0;
+        for (int i = 0; i < this_frame->objects_count; ++i) {
+            u32 serialized_length = serialize_rectf(this_frame->objects[i], *persistent_state);
+            total_length += serialized_length;
+            persistent_state->current += serialized_length;
+        }
+        persistent_state->current = persistent_reset;
+        game_info->platform_write_entire_file("test.txt", (const char*)arena_current(*persistent_state), total_length);
     }
 
     return true;
