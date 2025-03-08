@@ -171,12 +171,12 @@ u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
 }
 
 Rectf points_to_rect(Vec2f a, Vec2f b) {
-    f32 width = fabs(a.x - b.x);
-    f32 height = fabs(a.y - b.y);
+    f32 radiusx = fabs(a.x - b.x) / 2;
+    f32 radiusy = fabs(a.y - b.y) / 2;
 
     f32 botx = MIN(a.x, b.x);
-    f32 boty = MAX(a.y, b.y);
-    return Rectf{ botx + width, boty + height, width, height };
+    f32 boty = MIN(a.y, b.y);
+    return Rectf{ botx + radiusx, boty + radiusy, radiusx, radiusy };
 }
 
 Rectf scale_rect(Rectf r, f32 scale) {

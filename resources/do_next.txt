@@ -1,25 +1,11 @@
 do next:
-    better input handling
-        each input, each frame, needs:
-            number of presses
-            number of releases
-            held
+    fix drawn pos and size
+    draw from mouse down to mouse up
+    remove with right click
 
-        maybe
-            multiple press/release in one frame
-            order of all inputs within one frame
-
+    hotkey to save to file
 
     edit levels in game
         versioning
             @v1
                 etc
-
-        click position
-            start drawing new rect from click pos to mouse
-            create obstacle on second click
-
-        save to file
-
-            create entire file content (using a bunch of strings) at once
-            or write the file line by line
