@@ -472,7 +472,6 @@ int main(void) {
         this_frame->mouse        = &global_mouse;
         this_frame->camera.scale = last_frame->camera.scale;
         this_frame->drawing      = last_frame->drawing;
-        if (this_frame->mouse->left.down) printf("posx:%f posy:%f\n", this_frame->mouse->posx * this_frame->camera.scale, this_frame->mouse->posy * this_frame->camera.scale);
         game_wants_to_keep_running = game_code.update_function(frame_arena, last_frame, &persistent);
 
         float time = glfwGetTime();

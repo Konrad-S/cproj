@@ -171,16 +171,18 @@ Rectf try_move(Rectf player, Vec2f move, Rectf* others, u32 others_count, Collis
     return player;
 }
 
+const f32 CULL_OBJECT_IF_SMALLER = .05;
 u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
     Rectf* this_frame = (Rectf*)(this_frame_arena->data + this_frame_arena->current);
-    u32 i = 0;
-    for (i; i < last_frame->objects_count; ++i) {
-        // We could copy the whole thing, but in 
-        // the future we want to do things in here
-        this_frame[i] = last_frame->objects[i];
-        this_frame_arena->current += sizeof(this_frame[i]);
+    u32 added_count = 0;
+    for (int i = 0; i < last_frame->objects_count; ++i) {
+        Rectf rect = last_frame->objects[i];
+        if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER) continue;
+        this_frame[added_count] = rect;
+        this_frame_arena->current += sizeof(rect);
+        ++added_count;
     }
-    return i;
+    return added_count;
 }
 
 Rectf points_to_rect(Vec2f a, Vec2f b) {
@@ -228,7 +230,7 @@ Rectf screen_to_world(Rectf r, Camera camera) {
 }
 
 void erase_obstacle(Mouse* mouse, Rectf* obstacles, u32 obstacles_count, Camera camera) {
-    if (!mouse->right.presses) return;
+    if (!mouse->right.down) return;
     u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count);
     if (overlap_index < obstacles_count) {
         obstacles[overlap_index].radius = { 0, 0 };
@@ -240,14 +242,20 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     Game_Info* game_info = (Game_Info*)persistent_state->data;
     Player* player = &this_frame->player;
     *player = last_frame->player;
+
     this_frame->camera.pos = move_camera(last_frame->camera.pos, this_frame->input);
+    
+
     this_frame->objects = (Rectf*)(frame_state->data + frame_state->current);
     this_frame->objects_count = update_objects(last_frame, frame_state);
+    
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
     player->rect = try_move(player->rect, player_delta, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
-    
+
     this_frame->objects_count += draw_obstacle(this_frame->drawing, this_frame->mouse, this_frame->camera, this_frame->objects + this_frame->objects_count);
     erase_obstacle(this_frame->mouse, this_frame->objects, this_frame->objects_count, this_frame->camera);
+
+
     if (this_frame->input[InputAction::EDITOR_SAVE].presses) {
         u32 persistent_reset = persistent_state->current;
         u32 total_length = 0;
