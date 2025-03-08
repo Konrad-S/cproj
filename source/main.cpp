@@ -69,7 +69,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         case GLFW_MOUSE_BUTTON_LEFT:
             input = &global_mouse.left;
             break;
-        case GLFW_KEY_F:
+        case GLFW_MOUSE_BUTTON_RIGHT:
             input = &global_mouse.right;
             break;
         default:
@@ -414,7 +414,7 @@ int main(void) {
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
-    this_frame->camera_scale = scale * 2;
+    this_frame->camera.scale = scale * 2;
     this_frame->player.rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
 
     this_frame->objects = (Rectf*)arena_current(frame_arena_0);
@@ -460,16 +460,16 @@ int main(void) {
         transfer_input(this_frame->input);
 
         this_frame->mouse        = &global_mouse;
-        this_frame->camera_scale = last_frame->camera_scale;
+        this_frame->camera.scale = last_frame->camera.scale;
         this_frame->drawing      = last_frame->drawing;
-        if (this_frame->mouse->left.down) printf("posx:%f posy:%f\n", this_frame->mouse->posx * this_frame->camera_scale, this_frame->mouse->posy * this_frame->camera_scale);
+        if (this_frame->mouse->left.down) printf("posx:%f posy:%f\n", this_frame->mouse->posx * this_frame->camera.scale, this_frame->mouse->posy * this_frame->camera.scale);
         game_wants_to_keep_running = game_code.update_function(frame_arena, last_frame, &persistent);
 
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUniform2f(camera_location, this_frame->camera_pos.x, this_frame->camera_pos.y);
+        glUniform2f(camera_location, this_frame->camera.posx, this_frame->camera.posy);
 
         glBindVertexArray(VAO);
         for (int i = 0; i < this_frame->objects_count; i++) {
@@ -493,6 +493,8 @@ int main(void) {
 
         glfwSwapBuffers(window);
         global_mouse.left.presses = 0;
+        global_mouse.left.releases = 0;
+        global_mouse.right.presses = 0;
         global_mouse.right.releases = 0;
         glfwPollEvents();
         even_frame = !even_frame;

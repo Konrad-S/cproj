@@ -93,11 +93,15 @@ struct Drawing_Obstacle {
     POS_F32;
 };
 
+struct Camera {
+    POS_F32;
+    f32 scale;
+};
+
 struct Frame_Info {
     Player  player;
     Input   input[INPUT_COUNT];
-    Vec2f   camera_pos;
-    f32     camera_scale;
+    Camera  camera;
     Drawing_Obstacle drawing;
     Mouse*  mouse;
     Rectf*  objects;

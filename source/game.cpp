@@ -94,6 +94,17 @@ Rectf rectf_overlap(Rectf a, Rectf b) {
     return Rectf{ cposx, cposy, half_overlap_x, half_overlap_y };
 }
 
+u32 first_overlap_index(Rectf rect, Rectf* others, u32 others_count) {
+    for (int i = 0; i < others_count; ++i) {
+        Rectf result = rectf_overlap(rect, others[i]);
+        if (result.radiusx > 0 && result.radiusy > 0)
+        {
+            return i;
+        }
+    }
+    return others_count;
+}
+
 u32 get_overlaps(Rectf rect, Rectf* others, u32 others_count, Rectf* results) {
     u32 results_count = 0;
     for (int i = 0; i < others_count; ++i) {
@@ -186,7 +197,7 @@ Rectf move_rect(Rectf r, Vec2f dist) {
     return Rectf{ r.posx + dist.x, r.posy + dist.y, r.radius };
 }
 
-u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Vec2f camera_pos, f32 camera_scale, Rectf* data) {
+u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Rectf* data) {
     if (mouse->right.presses) {
         drawing.active = false;
         return 0;
@@ -198,25 +209,42 @@ u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Vec2f camera_pos, f32
         return 0;
     } else {
         Rectf screen_rect = points_to_rect(drawing.pos, mouse->pos);
-        Rectf scaled_rect = scale_rect(screen_rect, camera_scale);
-        *data = move_rect(scaled_rect, camera_pos);
+        Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
+        *data = move_rect(scaled_rect, camera.pos);
         drawing.active = false;
         return 1;
     }
     return 0;
 }
 
+Vec2f screen_to_world(Vec2f v, Camera camera) {
+    return Vec2f { v.x * camera.scale + camera.posx, v.y * camera.scale + camera.posy };
+}
+
+Rectf screen_to_world(Rectf r, Camera camera) {
+    return Rectf { screen_to_world(r.pos, camera), r.radiusx * camera.scale, r.radiusy * camera.scale };
+}
+
+void erase_obstacle(Mouse* mouse, Rectf* obstacles, u32 obstacles_count, Camera camera) {
+    if (!mouse->right.presses) return;
+    u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count);
+    if (overlap_index < obstacles_count) {
+        obstacles[overlap_index].radius = { 0, 0 };
+    }
+}
+
 bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
     Frame_Info* this_frame = (Frame_Info*)frame_state->data;
     Player* player = &this_frame->player;
     *player = last_frame->player;
-    this_frame->camera_pos = move_camera(last_frame->camera_pos, this_frame->input);
+    this_frame->camera.pos = move_camera(last_frame->camera.pos, this_frame->input);
     this_frame->objects = (Rectf*)(frame_state->data + frame_state->current);
     this_frame->objects_count = update_objects(last_frame, frame_state);
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
     player->rect = try_move(player->rect, player_delta, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
     
-    this_frame->objects_count += draw_obstacle(this_frame->drawing, this_frame->mouse, this_frame->camera_pos, this_frame->camera_scale, this_frame->objects + this_frame->objects_count);
+    this_frame->objects_count += draw_obstacle(this_frame->drawing, this_frame->mouse, this_frame->camera, this_frame->objects + this_frame->objects_count);
+    erase_obstacle(this_frame->mouse, this_frame->objects, this_frame->objects_count, this_frame->camera);
 
     return true;
 }
