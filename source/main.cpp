@@ -293,7 +293,7 @@ int main(void) {
         return -1;
     }
     glfwMakeContextCurrent(window);
-
+    //
     // Load OpenGL functions using GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         fprintf(stderr, "Failed to initialize GLAD\n");
@@ -307,7 +307,6 @@ int main(void) {
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
     //
     // Setup openGL buffers 
     unsigned int VAO;
@@ -327,7 +326,6 @@ int main(void) {
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-
     //
     // Create memory arenas
     Arena persistent;
@@ -345,66 +343,69 @@ int main(void) {
     frame_arena_1.data = frame_arena_0.data + frame_arena_0.capacity;
     frame_arena_1.capacity = FRAME_ARENA_SIZE;
     frame_arena_1.current = 0;
-
     //
     // Load shaders
-    u32 start_of_shader_text = persistent.current;
-    u32 bytes_read = read_entire_file(persistent, "../assets/vertex.txt");
-    if (bytes_read == 0) {
-        printf("Failed to get vertex shader, exiting...");
-        return -1;
+    unsigned int shader_program;
+    {
+        Arena temp_storage = persistent;
+        u32 start_of_shader_text = temp_storage.current;
+        u32 bytes_read = read_entire_file(temp_storage, "../assets/vertex.txt");
+        if (bytes_read == 0) {
+            printf("Failed to get vertex shader, exiting...");
+            return -1;
+        }
+        unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+        if (vertex_shader == 0) {
+            printf("Failed to create vertex shader");
+            return -1;
+        }
+        const GLchar* vertex_shader_source = (GLchar*) temp_storage.data + start_of_shader_text;
+        glShaderSource(vertex_shader, 1, &vertex_shader_source, (GLint*)&bytes_read);
+        glCompileShader(vertex_shader);
+        temp_storage.current = start_of_shader_text;
+        GLint success;
+        glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            GLint log_length;
+            glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &log_length);
+            char* error_info = (char*)temp_storage.data + temp_storage.current;
+            glGetShaderInfoLog(vertex_shader, log_length, nullptr, error_info);
+            printf("Vertex shader compilation error:\n%s", error_info);
+            return -1;
+        }
+        bytes_read = read_entire_file(temp_storage, "../assets/fragment.txt");
+        const GLchar* fragment_shader_source = (GLchar*) temp_storage.data + start_of_shader_text;
+        if (bytes_read == 0) {
+            printf("Failed to get fragment shader, exiting...");
+            return -1;
+        }
+        unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragment_shader, 1, &fragment_shader_source, (GLint*)&bytes_read);
+        glCompileShader(fragment_shader);
+        temp_storage.current = start_of_shader_text;
+        glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            GLint log_length;
+            glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &log_length);
+            char* error_info = (char*)temp_storage.data + temp_storage.current;
+            glGetShaderInfoLog(fragment_shader, log_length, nullptr, error_info);
+            printf("Fragment shader compilation error:\n%s", error_info);
+            return -1;
+        }
+        shader_program = glCreateProgram();
+        if (shader_program == 0) {
+            printf("Failed to create shader program");
+            return -1;
+        }
+        glAttachShader(shader_program, vertex_shader);
+        glAttachShader(shader_program, fragment_shader);
+        glLinkProgram(shader_program);
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        glUseProgram(shader_program);
     }
-    unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    if (vertex_shader == 0) {
-        printf("Failed to create vertex shader");
-        return -1;
-    }
-    const GLchar* vertex_shader_source = (GLchar*) persistent.data + start_of_shader_text;
-    glShaderSource(vertex_shader, 1, &vertex_shader_source, (GLint*)&bytes_read);
-    glCompileShader(vertex_shader);
-    persistent.current = start_of_shader_text;
-    GLint success;
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        GLint log_length;
-        glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &log_length);
-        char* error_info = (char*)persistent.data + persistent.current;
-        glGetShaderInfoLog(vertex_shader, log_length, nullptr, error_info);
-        printf("Vertex shader compilation error:\n%s", error_info);
-        return -1;
-    }
-    bytes_read = read_entire_file(persistent, "../assets/fragment.txt");
-    const GLchar* fragment_shader_source = (GLchar*) persistent.data + start_of_shader_text;
-    if (bytes_read == 0) {
-        printf("Failed to get fragment shader, exiting...");
-        return -1;
-    }
-    unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_shader_source, (GLint*)&bytes_read);
-    glCompileShader(fragment_shader);
-    persistent.current = start_of_shader_text;
-    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        GLint log_length;
-        glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &log_length);
-        char* error_info = (char*)persistent.data + persistent.current;
-        glGetShaderInfoLog(fragment_shader, log_length, nullptr, error_info);
-        printf("Fragment shader compilation error:\n%s", error_info);
-        return -1;
-    }
-    unsigned int shader_program = glCreateProgram();
-    if (shader_program == 0) {
-        printf("Failed to create shader program");
-        return -1;
-    }
-    glAttachShader(shader_program, vertex_shader);
-    glAttachShader(shader_program, fragment_shader);
-    glLinkProgram(shader_program);
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-    glUseProgram(shader_program);
-    persistent.current = 0;
-
+    //
+    // Get uniforms locations
     GLuint offset_location = glGetUniformLocation(shader_program, "offset");
     GLuint world_scale_location = glGetUniformLocation(shader_program, "world_scale");
     GLuint scale_location = glGetUniformLocation(shader_program, "scale");
@@ -412,7 +413,6 @@ int main(void) {
     GLuint color_location = glGetUniformLocation(shader_program, "color");
     f32 scale = .05f;
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
-    
     //
     // Setup game state
     frame_arena_0.current += sizeof(Frame_Info);
@@ -420,29 +420,27 @@ int main(void) {
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
     this_frame->camera.scale = scale * 2;
     this_frame->player.rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
-
-    this_frame->objects = (Rectf*)arena_current(frame_arena_0);
-    u32 file_size = read_entire_file(persistent, "test.txt");
-    this_frame->objects_count = parse_savefile((char*)arena_current(persistent), file_size, this_frame->objects);
-    frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
-
-    persistent.current = 0; // Game_Info is stored at start of the persistent arena
+    //
+    // Load save file
+    {
+        Arena temp_storage = persistent;
+        this_frame->objects = (Rectf*)arena_current(frame_arena_0);
+        u32 file_size = read_entire_file(temp_storage, "test.txt");
+        this_frame->objects_count = parse_savefile((char*)arena_current(temp_storage), file_size, this_frame->objects);
+        frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
+    }
+    // Game_Info is stored at start of the persistent arena.
     Game_Info* game_info = (Game_Info*)arena_append(&persistent, sizeof(Game_Info));
     game_info->platform_read_entire_file = read_entire_file;
     game_info->platform_write_entire_file = write_entire_file; 
-
-
-    bool even_frame = false;
-    bool game_wants_to_keep_running = true;
+    //
+    // Load game .dll
     char* game_dll_filename = "game.dll";
     char* temp_game_dll_filename = "TEMP_game.dll";
     Game_Code game_code = load_game_code(game_dll_filename, temp_game_dll_filename);
 
-    //char* const serialized_buffer = (char* const)arena_current(persistent);
-    //u32 serialized_count = serialize_rectf(this_frame->objects[1], serialized_buffer, arena_remaining(persistent));
-
-    //append_file_txt("test.txt", serialized_buffer, serialized_count);
-
+    bool even_frame = false;
+    bool game_wants_to_keep_running = true;
     while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
         //
         // Get game DLL and game update procedure
