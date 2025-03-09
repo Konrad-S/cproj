@@ -51,6 +51,8 @@ enum Entity_Type {
 };
 
 struct Entity {
+    bool is_an_existing_entity;
+    bool active;
     union {
         Rectf   rect;
         struct {
@@ -66,7 +68,7 @@ struct Entity {
             };
         };
     };
-    Entity* standing_on; // requires rewrite of object storage
+    Entity* standing_on;
     bool    grounded;
     Vec2f   velocity;
     f32     move_speed;

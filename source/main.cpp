@@ -217,9 +217,7 @@ u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
             f32 posy    = strtof(text + LENGTH(RECT_POSY), &text);
             f32 radiusx = strtof(text + LENGTH(RECT_RADIUSX), &text);
             f32 radiusy = strtof(text + LENGTH(RECT_RADIUSY), &text);
-            result[count] = Entity{};
-            result[count].rect = Rectf{ posx, posy, radiusx, radiusy };
-            ++count;
+            result[count++] = Entity{ true, true, Rectf{ posx, posy, radiusx, radiusy }};
         }
         while (true) {
             if (text - text_start + 1 >= text_size) return count;
@@ -482,7 +480,9 @@ int main(void) {
 
         glBindVertexArray(VAO);
         for (int i = 0; i < this_frame->objects_count; i++) {
-            Rectf rect = this_frame->objects[i].rect;
+            Entity object = this_frame->objects[i];
+            if (!object.active) continue;
+            Rectf rect = object.rect;
             glUniform2f(offset_location, rect.posx, rect.posy);
             glUniform2f(scale_location, rect.radiusx, rect.radiusy);
             glUniform4f(color_location, 0, 1, 0, 1);
