@@ -183,7 +183,8 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
         *object = last_objects[i];
         if (object->active) {
             Rectf rect = object->rect;
-            if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER) object->active = false;
+            if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER ||
+                (object->standing_on && !object->standing_on->active)) object->active = false;
         } else {
             object->is_an_existing_entity = false;
         }
@@ -222,7 +223,10 @@ u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Entity
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
         *data = Entity{ true, true, move_rect(scaled_rect, camera.pos)};
         drawing.active = false;
-        return 1;
+
+        *(data + 1) = Entity{ true, true, move_rect(scaled_rect, Vec2f{ camera.posx, camera.posy + 3})};
+        (data + 1)->standing_on = data;
+        return 2;
     }
     return 0;
 }
