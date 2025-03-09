@@ -5,3 +5,15 @@ do next:
             id?
         
     build in sublime
+
+
+possible change
+    only one frame arena, aka temp
+    store entities in main arena
+        instead of removing entries, tag them as dead/removed and write over them next time adding new
+
+    or
+    IDs
+    ID is index in array of pointers to entities
+    when one is removed it stays in array for 1 frame, so that when updating entities, they can get rid of their reference to it
+    then the index is free to be used when creating another entity

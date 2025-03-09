@@ -31,7 +31,6 @@ struct Vec2f {
     f32 x;
     f32 y;
 };
-
 #define POS_F32 union { Vec2f pos; struct { f32 posx; f32 posy; }; }
 
 struct Rectf {
@@ -44,6 +43,35 @@ struct Rectf {
         };
     };
 };
+
+enum Entity_Type {
+    NONE,
+    STATIC_TERRAIN,
+    MONSTER,
+};
+
+struct Entity {
+    union {
+        Rectf   rect;
+        struct {
+            struct {
+                POS_F32;
+            };
+            union {
+                Vec2f radius;
+                struct {
+                    f32 radiusx;
+                    f32 radiusy;
+                };
+            };
+        };
+    };
+    Entity* standing_on; // requires rewrite of object storage
+    bool    grounded;
+    Vec2f   velocity;
+    f32     move_speed;
+};
+typedef Entity Player;
 
 struct Direction {
     bool up;
@@ -79,12 +107,6 @@ struct Mouse {
     Input right;
 };
 
-struct Player {
-    Rectf rect;
-    bool  grounded;
-    Vec2f velocity;
-};
-
 struct Collision_Info {
     Direction sides_touched;
 };
@@ -105,7 +127,7 @@ struct Frame_Info {
     Camera  camera;
     Drawing_Obstacle drawing;
     Mouse*  mouse;
-    Rectf*  objects;
+    Entity* objects;
     u32     objects_count;
     Rectf*  collisions;
     u32     collisions_count;
@@ -121,7 +143,6 @@ struct Game_Info {
     // Stuff in Frame_Info that we always copy over without modification
     // and we don't care what the previous frames value was, should go here instead.
 };
-
 
 //Rectf get_updated_player(Rectf last_player, Input input);
 extern "C" {

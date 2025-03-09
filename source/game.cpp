@@ -96,9 +96,9 @@ Rectf rectf_overlap(Rectf a, Rectf b) {
     return Rectf{ cposx, cposy, half_overlap_x, half_overlap_y };
 }
 
-u32 first_overlap_index(Rectf rect, Rectf* others, u32 others_count) {
+u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count) {
     for (int i = 0; i < others_count; ++i) {
-        Rectf result = rectf_overlap(rect, others[i]);
+        Rectf result = rectf_overlap(rect, others[i].rect);
         if (result.radiusx > 0 && result.radiusy > 0)
         {
             return i;
@@ -127,7 +127,7 @@ bool check_collided(Rectf a, Rectf b) {
 
 const f32 PLAYER_MOVE_SPEED = .1f;
 const f32 COLLISION_EPSILON = .001f;
-Rectf try_move(Rectf player, Vec2f move, Rectf* others, u32 others_count, Collision_Info* info) {
+Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Collision_Info* info) {
     if (move.x != 0) {
         f32 sign;
         if (move.x > 0) {
@@ -138,7 +138,7 @@ Rectf try_move(Rectf player, Vec2f move, Rectf* others, u32 others_count, Collis
         player.posx += move.x;
         f32 most_extreme_edge = player.posx + player.radiusx * sign;
         for (u32 i = 0; i < others_count; ++i) {
-            if (!check_collided(player, others[i])) continue;
+            if (!check_collided(player, others[i].rect)) continue;
             f32 edge = others[i].posx - others[i].radiusx * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
@@ -158,7 +158,7 @@ Rectf try_move(Rectf player, Vec2f move, Rectf* others, u32 others_count, Collis
         player.posy += move.y;
         f32 most_extreme_edge = player.posy + player.radiusy * sign;
         for (u32 i = 0; i < others_count; ++i) {
-            if (!check_collided(player, others[i])) continue;
+            if (!check_collided(player, others[i].rect)) continue;
             f32 edge = others[i].posy - others[i].radiusy * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
@@ -172,14 +172,13 @@ Rectf try_move(Rectf player, Vec2f move, Rectf* others, u32 others_count, Collis
 }
 
 const f32 CULL_OBJECT_IF_SMALLER = .05;
-u32 update_objects(Frame_Info* last_frame, Arena* this_frame_arena) {
-    Rectf* this_frame = (Rectf*)(this_frame_arena->data + this_frame_arena->current);
+u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result) {
     u32 added_count = 0;
-    for (int i = 0; i < last_frame->objects_count; ++i) {
-        Rectf rect = last_frame->objects[i];
+    for (int i = 0; i < last_objects_count; ++i) {
+        Rectf rect = last_objects[i].rect;
         if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER) continue;
-        this_frame[added_count] = rect;
-        this_frame_arena->current += sizeof(rect);
+        result[added_count] = Entity{};
+        result[added_count].rect = rect;
         ++added_count;
     }
     return added_count;
@@ -201,7 +200,7 @@ Rectf move_rect(Rectf r, Vec2f dist) {
     return Rectf{ r.posx + dist.x, r.posy + dist.y, r.radius };
 }
 
-u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Rectf* data) {
+u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Entity* data) {
     if (mouse->right.presses) {
         drawing.active = false;
         return 0;
@@ -214,7 +213,8 @@ u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Rectf*
     } else {
         Rectf screen_rect = points_to_rect(drawing.pos, mouse->pos);
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
-        *data = move_rect(scaled_rect, camera.pos);
+        *data = Entity{};
+        data->rect = move_rect(scaled_rect, camera.pos);
         drawing.active = false;
         return 1;
     }
@@ -229,7 +229,7 @@ Rectf screen_to_world(Rectf r, Camera camera) {
     return Rectf { screen_to_world(r.pos, camera), r.radiusx * camera.scale, r.radiusy * camera.scale };
 }
 
-void erase_obstacle(Mouse* mouse, Rectf* obstacles, u32 obstacles_count, Camera camera) {
+void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera) {
     if (!mouse->right.down) return;
     u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count);
     if (overlap_index < obstacles_count) {
@@ -246,8 +246,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     this_frame->camera.pos = move_camera(last_frame->camera.pos, this_frame->input);
     
 
-    this_frame->objects = (Rectf*)(frame_state->data + frame_state->current);
-    this_frame->objects_count = update_objects(last_frame, frame_state);
+    this_frame->objects = (Entity*)(frame_state->data + frame_state->current);
+    this_frame->objects_count = update_objects(last_frame->objects, last_frame->objects_count, this_frame->objects);
     
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
     player->rect = try_move(player->rect, player_delta, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
@@ -260,7 +260,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         u32 persistent_reset = persistent_state->current;
         u32 total_length = 0;
         for (int i = 0; i < this_frame->objects_count; ++i) {
-            u32 serialized_length = serialize_rectf(this_frame->objects[i], *persistent_state);
+            u32 serialized_length = serialize_rectf(this_frame->objects[i].rect, *persistent_state);
             total_length += serialized_length;
             persistent_state->current += serialized_length;
         }

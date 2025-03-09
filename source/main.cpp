@@ -206,7 +206,7 @@ bool write_entire_file(const char* file_path, const char* content, u32 content_l
 #define RECT_RADIUSX " radiusx="
 #define RECT_RADIUSY " radiusy="
 #define LENGTH(s) (sizeof(s) - 1)
-u32 parse_savefile(char* text_start, u32 text_size, Rectf* result) {
+u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
     u32 count = 0;
     char* text = text_start;
     u32 start_size = LENGTH(RECT_START);
@@ -217,7 +217,9 @@ u32 parse_savefile(char* text_start, u32 text_size, Rectf* result) {
             f32 posy    = strtof(text + LENGTH(RECT_POSY), &text);
             f32 radiusx = strtof(text + LENGTH(RECT_RADIUSX), &text);
             f32 radiusy = strtof(text + LENGTH(RECT_RADIUSY), &text);
-            result[count++] = Rectf{ posx, posy, radiusx, radiusy };
+            result[count] = Entity{};
+            result[count].rect = Rectf{ posx, posy, radiusx, radiusy };
+            ++count;
         }
         while (true) {
             if (text - text_start + 1 >= text_size) return count;
@@ -424,7 +426,7 @@ int main(void) {
     // Load save file
     {
         Arena temp_storage = persistent;
-        this_frame->objects = (Rectf*)arena_current(frame_arena_0);
+        this_frame->objects = (Entity*)arena_current(frame_arena_0);
         u32 file_size = read_entire_file(temp_storage, "test.txt");
         this_frame->objects_count = parse_savefile((char*)arena_current(temp_storage), file_size, this_frame->objects);
         frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
@@ -480,7 +482,7 @@ int main(void) {
 
         glBindVertexArray(VAO);
         for (int i = 0; i < this_frame->objects_count; i++) {
-            Rectf rect = this_frame->objects[i];
+            Rectf rect = this_frame->objects[i].rect;
             glUniform2f(offset_location, rect.posx, rect.posy);
             glUniform2f(scale_location, rect.radiusx, rect.radiusy);
             glUniform4f(color_location, 0, 1, 0, 1);
