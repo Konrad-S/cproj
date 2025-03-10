@@ -109,6 +109,21 @@ u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count) {
     return others_count;
 }
 
+u32 first_overlap_index(u32 rect_index, Entity* others, u32 others_count) {
+    assert(rect_index < others_count);
+    for (int i = 0; i < others_count; ++i) {
+        if (i == rect_index) continue;
+        Entity other = others[i];
+        if (!other.type) continue;
+        Rectf result = rectf_overlap(others[rect_index].rect, other.rect);
+        if (result.radiusx > 0 && result.radiusy > 0)
+        {
+            return i;
+        }
+    }
+    return others_count;
+}
+
 u32 get_overlaps(Rectf rect, Rectf* others, u32 others_count, Rectf* results) {
     u32 results_count = 0;
     for (int i = 0; i < others_count; ++i) {
@@ -185,7 +200,6 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
         case MONSTER:
             if (object->standing_on && object->standing_on->type) {
                 Entity* other = object->standing_on;
-                //walk on other
                 object->posx += object->move_speed;
                 if (object->posx + object->radiusx > other->posx + other->radiusx ||
                     object->posx - object->radiusx < other->posx - other->radiusx) {
@@ -193,7 +207,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                 }
             } else {
                 //fall until colliding
-                u32 overlap_index = first_overlap_index(object->rect, last_objects, last_objects_count);
+                u32 overlap_index = first_overlap_index(i, last_objects, last_objects_count);
                 if (overlap_index < last_objects_count) {
                     object->standing_on = last_objects + overlap_index;
                     Entity* other = object->standing_on;
