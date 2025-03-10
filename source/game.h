@@ -34,8 +34,9 @@ struct Vec2f {
 #define POS_F32    union { Vec2f pos;    struct { f32 posx;    f32 posy;    }; }
 #define RADIUS_F32 union { Vec2f radius; struct { f32 radiusx; f32 radiusy; }; }
 
-#define RECTF_DEFINITION(name, dummy_in_order_to_not_get_warning_when_providing_no_argument) struct name { POS_F32; RADIUS_F32; }
-RECTF_DEFINITION(Rectf,);
+#define ANONYMOUS
+#define RECTF_DEFINITION(name) struct name { POS_F32; RADIUS_F32; }
+RECTF_DEFINITION(Rectf);
 
 enum Entity_Type {
     NONE,
@@ -48,7 +49,7 @@ struct Entity {
     bool active;
     union {
         Rectf rect;
-        RECTF_DEFINITION(,);
+        RECTF_DEFINITION(ANONYMOUS);
     };
     Entity* standing_on;
     bool    grounded;
