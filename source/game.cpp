@@ -181,11 +181,34 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
     for (int i = 0; i < last_objects_count; ++i) {
         Entity* object = result + added_count++;
         *object = last_objects[i];
-        if (object->type) {
+        switch (object->type) {
+        case MONSTER:
+            if (object->standing_on && object->standing_on->type) {
+                Entity* other = object->standing_on;
+                //walk on other
+                object->posx += object->move_speed;
+                if (object->posx + object->radiusx > other->posx + other->radiusx ||
+                    object->posx - object->radiusx < other->posx - other->radiusx) {
+                    object->move_speed *= -1;
+                }
+            } else {
+                //fall until colliding
+                u32 overlap_index = first_overlap_index(object->rect, last_objects, last_objects_count);
+                if (overlap_index < last_objects_count) {
+                    object->standing_on = last_objects + overlap_index;
+                    Entity* other = object->standing_on;
+                    object->posy = other->posy + other->radiusy + object->radiusy;
+                } else {
+                    object->posy -= .1f;
+                }
+
+            }
+        case STATIC_TERRAIN:
             Rectf rect = object->rect;
-            if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER ||
-                (object->standing_on && !object->standing_on->type)) object->type = Entity_Type::NONE;
-        } else {
+            if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER) object->type = Entity_Type::NONE;
+            break;
+        case NONE:
+        default:
             object->is_an_existing_entity = false;
         }
     }
@@ -224,8 +247,9 @@ u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Entity
         *data = Entity{ Entity_Type::STATIC_TERRAIN, true, move_rect(scaled_rect, camera.pos)};
         drawing.active = false;
 
-        *(data + 1) = Entity{ Entity_Type::STATIC_TERRAIN, true, move_rect(scaled_rect, Vec2f{ camera.posx, camera.posy + 3})};
-        (data + 1)->standing_on = data;
+        *(data + 1) = Entity{ Entity_Type::MONSTER, true, Rectf{ data->posx, data->posy + data->radiusy * 1.5f, data->radiusx * .3f, data->radiusy * .3f } };
+        //(data + 1)->standing_on = data;
+        (data + 1)->move_speed = .1f;
         return 2;
     }
     return 0;
