@@ -99,7 +99,7 @@ Rectf rectf_overlap(Rectf a, Rectf b) {
 u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count) {
     for (int i = 0; i < others_count; ++i) {
         Entity other = others[i];
-        if (!other.active) continue;
+        if (!other.type) continue;
         Rectf result = rectf_overlap(rect, other.rect);
         if (result.radiusx > 0 && result.radiusy > 0)
         {
@@ -141,7 +141,7 @@ Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Colli
         f32 most_extreme_edge = player.posx + player.radiusx * sign;
         for (u32 i = 0; i < others_count; ++i) {
             Entity other = others[i];
-            if (!other.active || !check_collided(player, other.rect)) continue;
+            if (!other.type || !check_collided(player, other.rect)) continue;
             f32 edge = other.posx - other.radiusx * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
@@ -162,7 +162,7 @@ Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Colli
         f32 most_extreme_edge = player.posy + player.radiusy * sign;
         for (u32 i = 0; i < others_count; ++i) {
             Entity other = others[i];
-            if (!other.active || !check_collided(player, other.rect)) continue;
+            if (!other.type || !check_collided(player, other.rect)) continue;
             f32 edge = other.posy - other.radiusy * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
@@ -181,10 +181,10 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
     for (int i = 0; i < last_objects_count; ++i) {
         Entity* object = result + added_count++;
         *object = last_objects[i];
-        if (object->active) {
+        if (object->type) {
             Rectf rect = object->rect;
             if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER ||
-                (object->standing_on && !object->standing_on->active)) object->active = false;
+                (object->standing_on && !object->standing_on->type)) object->type = Entity_Type::NONE;
         } else {
             object->is_an_existing_entity = false;
         }
@@ -221,10 +221,10 @@ u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Entity
     } else {
         Rectf screen_rect = points_to_rect(drawing.pos, mouse->pos);
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
-        *data = Entity{ true, true, move_rect(scaled_rect, camera.pos)};
+        *data = Entity{ Entity_Type::STATIC_TERRAIN, true, move_rect(scaled_rect, camera.pos)};
         drawing.active = false;
 
-        *(data + 1) = Entity{ true, true, move_rect(scaled_rect, Vec2f{ camera.posx, camera.posy + 3})};
+        *(data + 1) = Entity{ Entity_Type::STATIC_TERRAIN, true, move_rect(scaled_rect, Vec2f{ camera.posx, camera.posy + 3})};
         (data + 1)->standing_on = data;
         return 2;
     }
@@ -243,7 +243,7 @@ void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera
     if (!mouse->right.down) return;
     u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count);
     if (overlap_index < obstacles_count) {
-        obstacles[overlap_index].active = false;
+        obstacles[overlap_index].type = Entity_Type::NONE;
     }
 }
 
@@ -271,7 +271,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         u32 total_length = 0;
         for (int i = 0; i < this_frame->objects_count; ++i) {
             Entity object = this_frame->objects[i];
-            if (!object.active) continue;
+            if (!object.type) continue;
             u32 serialized_length = serialize_rectf(object.rect, *persistent_state);
             total_length += serialized_length;
             persistent_state->current += serialized_length;

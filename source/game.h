@@ -39,14 +39,15 @@ struct Vec2f {
 RECTF_DEFINITION(Rectf);
 
 enum Entity_Type {
-    NONE,
+    NONE = 0,
+    PLAYER,
     STATIC_TERRAIN,
     MONSTER,
 };
 
 struct Entity {
+    Entity_Type type;
     bool is_an_existing_entity;
-    bool active;
     union {
         Rectf rect;
         RECTF_DEFINITION(ANONYMOUS);

@@ -1,4 +1,6 @@
 do next:
+    use entity type instead of entity.active
+
     text
 
     monster
