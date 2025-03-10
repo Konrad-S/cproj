@@ -1,7 +1,9 @@
 do next:
-    use entity type instead of entity.active
-
     text
+        load ascii texture
+        load into opengl
+        draw with offset / texture coords
+        
 
     monster
 

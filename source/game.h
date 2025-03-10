@@ -41,7 +41,7 @@ RECTF_DEFINITION(Rectf);
 enum Entity_Type {
     NONE = 0,
     PLAYER,
-    STATIC_TERRAIN,
+    STATIC,
     MONSTER,
 };
 
@@ -56,6 +56,7 @@ struct Entity {
     bool    grounded;
     Vec2f   velocity;
     f32     move_speed;
+    s8      facing;
 };
 typedef Entity Player;
 

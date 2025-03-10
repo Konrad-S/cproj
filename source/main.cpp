@@ -217,7 +217,7 @@ u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
             f32 posy    = strtof(text + LENGTH(RECT_POSY), &text);
             f32 radiusx = strtof(text + LENGTH(RECT_RADIUSX), &text);
             f32 radiusy = strtof(text + LENGTH(RECT_RADIUSY), &text);
-            result[count++] = Entity{ Entity_Type::STATIC_TERRAIN, true, Rectf{ posx, posy, radiusx, radiusy }};
+            result[count++] = Entity{ Entity_Type::STATIC, true, Rectf{ posx, posy, radiusx, radiusy }};
         }
         while (true) {
             if (text - text_start + 1 >= text_size) return count;

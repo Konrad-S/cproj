@@ -156,7 +156,7 @@ Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Colli
         f32 most_extreme_edge = player.posx + player.radiusx * sign;
         for (u32 i = 0; i < others_count; ++i) {
             Entity other = others[i];
-            if (!other.type || !check_collided(player, other.rect)) continue;
+            if (other.type != Entity_Type::STATIC || !check_collided(player, other.rect)) continue;
             f32 edge = other.posx - other.radiusx * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
@@ -177,7 +177,7 @@ Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Colli
         f32 most_extreme_edge = player.posy + player.radiusy * sign;
         for (u32 i = 0; i < others_count; ++i) {
             Entity other = others[i];
-            if (!other.type || !check_collided(player, other.rect)) continue;
+            if (other.type != Entity_Type::STATIC || !check_collided(player, other.rect)) continue;
             f32 edge = other.posy - other.radiusy * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
@@ -200,11 +200,16 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
         case MONSTER:
             if (object->standing_on && object->standing_on->type) {
                 Entity* other = object->standing_on;
-                object->posx += object->move_speed;
-                if (object->posx + object->radiusx > other->posx + other->radiusx ||
-                    object->posx - object->radiusx < other->posx - other->radiusx) {
-                    object->move_speed *= -1;
+                bool outside_right = object->posx + object->radiusx > other->posx + other->radiusx;
+                bool outside_left  = object->posx - object->radiusx < other->posx - other->radiusx;
+                if (outside_right && outside_left) {
+                    object->facing = 0;
+                } else if (outside_right) {
+                    object->facing = -1;
+                } else if (outside_left) {
+                    object->facing = 1;
                 }
+                object->posx += object->move_speed * object->facing;
             } else {
                 //fall until colliding
                 u32 overlap_index = first_overlap_index(i, last_objects, last_objects_count);
@@ -212,12 +217,13 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                     object->standing_on = last_objects + overlap_index;
                     Entity* other = object->standing_on;
                     object->posy = other->posy + other->radiusy + object->radiusy;
+                    object->facing = -1;
                 } else {
                     object->posy -= .1f;
                 }
 
             }
-        case STATIC_TERRAIN:
+        case STATIC:
             Rectf rect = object->rect;
             if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER) object->type = Entity_Type::NONE;
             break;
@@ -258,7 +264,7 @@ u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Entity
     } else {
         Rectf screen_rect = points_to_rect(drawing.pos, mouse->pos);
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
-        *data = Entity{ Entity_Type::STATIC_TERRAIN, true, move_rect(scaled_rect, camera.pos)};
+        *data = Entity{ Entity_Type::STATIC, true, move_rect(scaled_rect, camera.pos)};
         drawing.active = false;
 
         *(data + 1) = Entity{ Entity_Type::MONSTER, true, Rectf{ data->posx, data->posy + data->radiusy * 1.5f, data->radiusx * .3f, data->radiusy * .3f } };
