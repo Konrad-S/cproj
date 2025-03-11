@@ -272,6 +272,36 @@ void unload_game_code(Game_Code* game_code) {
     game_code->update_function = 0;
 }
 
+u32 load_shader(const char* file_name, Arena arena, GLenum shader_type)
+{
+    u32 start_of_shader_text = arena.current;
+    u32 bytes_read = read_entire_file(arena, file_name);
+    if (bytes_read == 0) {
+        printf("Failed to get shader, exiting...");
+        assert(false);
+    }
+    u32 shader = glCreateShader(shader_type);
+    if (shader == 0) {
+        printf("Failed to create shader");
+        assert(false);
+    }
+    const GLchar* shader_source = (GLchar*) arena.data + start_of_shader_text;
+    glShaderSource(shader, 1, &shader_source, (GLint*)&bytes_read);
+    glCompileShader(shader);
+    arena.current = start_of_shader_text;
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        GLint log_length;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
+        char* error_info = (char*)arena.data + arena.current;
+        glGetShaderInfoLog(shader, log_length, nullptr, error_info);
+        printf("Shader compilation error:\n%s", error_info);
+        assert(false);
+    }
+    return shader;
+}
+
 int main(void) {
     //
     // Initialize GLFW
@@ -345,54 +375,19 @@ int main(void) {
     frame_arena_1.current = 0;
     //
     // Load shaders
-    unsigned int shader_program;
+    u32 shader_program;
+    u32 text_shader_program;
     {
-        Arena temp_storage = persistent;
-        u32 start_of_shader_text = temp_storage.current;
-        u32 bytes_read = read_entire_file(temp_storage, "../assets/vertex.txt");
-        if (bytes_read == 0) {
-            printf("Failed to get vertex shader, exiting...");
-            return -1;
-        }
-        unsigned int vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        if (vertex_shader == 0) {
-            printf("Failed to create vertex shader");
-            return -1;
-        }
-        const GLchar* vertex_shader_source = (GLchar*) temp_storage.data + start_of_shader_text;
-        glShaderSource(vertex_shader, 1, &vertex_shader_source, (GLint*)&bytes_read);
-        glCompileShader(vertex_shader);
-        temp_storage.current = start_of_shader_text;
-        GLint success;
-        glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            GLint log_length;
-            glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &log_length);
-            char* error_info = (char*)temp_storage.data + temp_storage.current;
-            glGetShaderInfoLog(vertex_shader, log_length, nullptr, error_info);
-            printf("Vertex shader compilation error:\n%s", error_info);
-            return -1;
-        }
-        bytes_read = read_entire_file(temp_storage, "../assets/fragment.txt");
-        const GLchar* fragment_shader_source = (GLchar*) temp_storage.data + start_of_shader_text;
-        if (bytes_read == 0) {
-            printf("Failed to get fragment shader, exiting...");
-            return -1;
-        }
-        unsigned int fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment_shader, 1, &fragment_shader_source, (GLint*)&bytes_read);
-        glCompileShader(fragment_shader);
-        temp_storage.current = start_of_shader_text;
-        glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            GLint log_length;
-            glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &log_length);
-            char* error_info = (char*)temp_storage.data + temp_storage.current;
-            glGetShaderInfoLog(fragment_shader, log_length, nullptr, error_info);
-            printf("Fragment shader compilation error:\n%s", error_info);
-            return -1;
-        }
+        u32 vertex_shader =        load_shader("../assets/vertex.txt",   persistent, GL_VERTEX_SHADER);
+        u32 fragment_shader =      load_shader("../assets/fragment.txt", persistent, GL_FRAGMENT_SHADER);
+        u32 text_fragment_shader = load_shader("../assets/text_fragment.txt", persistent, GL_FRAGMENT_SHADER);
+
         shader_program = glCreateProgram();
+        if (shader_program == 0) {
+            printf("Failed to create shader program");
+            return -1;
+        }
+        text_shader_program = glCreateProgram();
         if (shader_program == 0) {
             printf("Failed to create shader program");
             return -1;
@@ -400,9 +395,30 @@ int main(void) {
         glAttachShader(shader_program, vertex_shader);
         glAttachShader(shader_program, fragment_shader);
         glLinkProgram(shader_program);
+        glAttachShader(text_shader_program, vertex_shader);
+        glAttachShader(text_shader_program, text_fragment_shader);
+        glLinkProgram(text_shader_program);
         glDeleteShader(vertex_shader);
         glDeleteShader(fragment_shader);
-        glUseProgram(shader_program);
+    }
+    //
+    // Texture to shader program
+    GLuint texture;
+    {
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        int width;
+        int height;
+        int pixel_depth;
+        u8 *data = stbi_load("../assets/ASCII_mono.bmp", &width, &height, &pixel_depth, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, arena_current(persistent));
+        glUseProgram(text_shader_program);
+        glUniform1i(glGetUniformLocation(text_shader_program, "sheet"), 0);
     }
     //
     // Get uniforms locations
@@ -412,6 +428,7 @@ int main(void) {
     GLuint camera_location = glGetUniformLocation(shader_program, "camera");
     GLuint color_location = glGetUniformLocation(shader_program, "color");
     f32 scale = .05f;
+    glUseProgram(shader_program);
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     //
     // Setup game state

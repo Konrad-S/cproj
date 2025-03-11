@@ -1,6 +1,8 @@
 #include <cstdio>
 #include <math.h>
 #include "game.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 //
 // Arena
