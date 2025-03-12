@@ -343,18 +343,19 @@ int main(void) {
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
     float vertices[] = {
-        -1.f, -1.f, 0.0f,
-         1.f, -1.f, 0.0f,
-         1.f,  1.f, 0.0f,
-        -1.f, -1.f, 0.0f,
-         1.f,  1.f, 0.0f,
-        -1.f,  1.f, 0.0f
+        -1.f, -1.f, 0.0f, 0.f, 0.f,   //left bot
+         1.f, -1.f, 0.0f, 1.f, 0.f,   //right bot
+         1.f,  1.f, 0.0f, 1.f, 1.f,   //right top
+        -1.f, -1.f, 0.0f, 0.f, 0.f,   //left bot
+         1.f,  1.f, 0.0f, 1.f, 1.f,   //right top
+        -1.f,  1.f, 0.0f, 0.f, 1.f,   //left top
     };
     unsigned int VBO;
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(0);
     //
     // Create memory arenas
@@ -415,8 +416,10 @@ int main(void) {
         int width;
         int height;
         int pixel_depth;
-        u8 *data = stbi_load("../assets/ASCII_mono.bmp", &width, &height, &pixel_depth, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, arena_current(persistent));
+        u8 *data = stbi_load("../assets/ASCII.png", &width, &height, &pixel_depth, 3);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
         glUseProgram(text_shader_program);
         glUniform1i(glGetUniformLocation(text_shader_program, "sheet"), 0);
     }
@@ -495,7 +498,9 @@ int main(void) {
 
         glUniform2f(camera_location, this_frame->camera.posx, this_frame->camera.posy);
 
+        glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(VAO);
+
         for (int i = 0; i < this_frame->objects_count; i++) {
             Entity object = this_frame->objects[i];
             if (!object.type) continue;

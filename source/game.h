@@ -1,7 +1,6 @@
 #ifndef GAME_H
 
 #include <stdint.h>
-#include "stb_image.h"
 
 typedef int8_t   s8;
 typedef int16_t  s16;
