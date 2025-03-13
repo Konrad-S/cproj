@@ -144,52 +144,30 @@ bool check_collided(Rectf a, Rectf b) {
     return (overlap_x > 0 && overlap_y > 0);
 }
 
-
-
 const f32 PLAYER_MOVE_SPEED = .1f;
 const f32 COLLISION_EPSILON = .001f;
-Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Collision_Info* info) {
-    if (move.x != 0) {
+Rectf try_move_axis(Rectf player, Vec2f move, u8 axis_offset, Entity* others, u32 others_count, Collision_Info* info) {
+    f32 move_axis = move.a[axis_offset];
+    if (move_axis != 0) {
         f32 sign;
-        if (move.x > 0) {
+        if (move_axis > 0) {
             sign = 1.f;
         } else {
             sign = -1.f;
         }
-        player.posx += move.x;
-        f32 most_extreme_edge = player.posx + player.radiusx * sign;
+        player.pos.a[axis_offset] += move_axis;
+        f32 most_extreme_edge = player.pos.a[axis_offset] + player.radius.a[axis_offset] * sign;
         for (u32 i = 0; i < others_count; ++i) {
             Entity other = others[i];
             if (other.type != ENTITY_STATIC || !check_collided(player, other.rect)) continue;
-            f32 edge = other.posx - other.radiusx * sign;
+            f32 edge = other.pos.a[axis_offset] - other.radius.a[axis_offset] * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
-                if (sign > 0) info->sides_touched |= DIR_RIGHT;
-                else          info->sides_touched |= DIR_LEFT;
+                if (sign > 0) info->sides_touched |= (DIR_RIGHT - axis_offset);
+                else          info->sides_touched |= (DIR_LEFT - axis_offset);
             }
         }
-        player.posx = most_extreme_edge - (player.radiusx + COLLISION_EPSILON) * sign;
-    }
-    if (move.y != 0) {
-        f32 sign;
-        if (move.y > 0) {
-            sign = 1.f;
-        } else {
-            sign = -1.f;
-        }
-        player.posy += move.y;
-        f32 most_extreme_edge = player.posy + player.radiusy * sign;
-        for (u32 i = 0; i < others_count; ++i) {
-            Entity other = others[i];
-            if (other.type != ENTITY_STATIC || !check_collided(player, other.rect)) continue;
-            f32 edge = other.posy - other.radiusy * sign;
-            if (edge * sign < most_extreme_edge * sign) {
-                most_extreme_edge = edge;
-                if (sign > 0) info->sides_touched |= DIR_UP;
-                else          info->sides_touched |= DIR_DOWN;
-            }
-        }
-        player.posy = most_extreme_edge - (player.radiusy + COLLISION_EPSILON) * sign;
+        player.pos.a[axis_offset] = most_extreme_edge - (player.radius.a[axis_offset] + COLLISION_EPSILON) * sign;
     }
     return player;
 }
@@ -308,7 +286,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     this_frame->objects_count = update_objects(last_frame->objects, last_frame->objects_count, this_frame->objects);
     
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
-    player->rect = try_move(player->rect, player_delta, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
+    player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 0, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
+    player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 1, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
 
     this_frame->objects_count += draw_obstacle(this_frame->drawing, this_frame->mouse, this_frame->camera, this_frame->objects + this_frame->objects_count);
     erase_obstacle(this_frame->mouse, this_frame->objects, this_frame->objects_count, this_frame->camera);

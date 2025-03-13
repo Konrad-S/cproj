@@ -28,8 +28,13 @@ struct Arena {
 };
 
 struct Vec2f {
-    f32 x;
-    f32 y;
+    union {
+        struct {
+            f32 x;
+            f32 y;
+        };
+        f32 a[2];
+    };
 };
 #define POS_F32    union { Vec2f pos;    struct { f32 posx;    f32 posy;    }; }
 #define RADIUS_F32 union { Vec2f radius; struct { f32 radiusx; f32 radiusy; }; }
