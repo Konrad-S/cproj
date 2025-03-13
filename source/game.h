@@ -39,10 +39,10 @@ struct Vec2f {
 RECTF_DEFINITION(Rectf);
 
 enum Entity_Type {
-    NONE = 0,
-    PLAYER,
-    STATIC,
-    MONSTER,
+    ENTITY_NONE = 0,
+    ENTITY_PLAYER,
+    ENTITY_STATIC,
+    ENTITY_MONSTER,
 };
 
 struct Entity {
@@ -60,27 +60,27 @@ struct Entity {
 };
 typedef Entity Player;
 
-struct Direction {
-    bool up;
-    bool right;
-    bool down;
-    bool left;
+enum Direction {
+    DIR_UP    = 1,
+    DIR_RIGHT = 2,
+    DIR_DOWN  = 4,
+    DIR_LEFT  = 8,
 };
+typedef u8 Direction_Flag;
 
 enum InputAction {
-    UP,
-    RIGHT,
-    DOWN,
-    LEFT,
-    CAM_UP,
-    CAM_RIGHT,
-    CAM_DOWN,
-    CAM_LEFT,
-    EDITOR_SAVE,
-    ENUM_COUNT,
+    INPUT_UP,
+    INPUT_RIGHT,
+    INPUT_DOWN,
+    INPUT_LEFT,
+    INPUT_CAM_UP,
+    INPUT_CAM_RIGHT,
+    INPUT_CAM_DOWN,
+    INPUT_CAM_LEFT,
+    INPUT_EDITOR_SAVE,
+    INPUT_ENUM_COUNT,
 };
-#define INPUT_COUNT (InputAction::ENUM_COUNT)
-#define INPUT_SIZE (INPUT_COUNT * sizeof(Input))
+#define INPUT_SIZE (INPUT_ENUM_COUNT * sizeof(Input))
 
 struct Input {
     u32  presses;
@@ -95,7 +95,7 @@ struct Mouse {
 };
 
 struct Collision_Info {
-    Direction sides_touched;
+    Direction_Flag sides_touched;
 };
 
 struct Drawing_Obstacle {
@@ -110,7 +110,7 @@ struct Camera {
 
 struct Frame_Info {
     Player  player;
-    Input   input[INPUT_COUNT];
+    Input   input[INPUT_ENUM_COUNT];
     Camera  camera;
     Drawing_Obstacle drawing;
     Mouse*  mouse;

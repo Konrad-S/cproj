@@ -32,16 +32,16 @@ u32 serialize_rectf(Rectf rect, Arena arena) {
 
 Vec2f move_camera(Vec2f last_pos, Input* input) {
     Vec2f pos = last_pos;
-    if (input[InputAction::CAM_UP].down) {
+    if (input[INPUT_CAM_UP].down) {
         pos.y += .1f;
     }
-    if (input[InputAction::CAM_RIGHT].down) {
+    if (input[INPUT_CAM_RIGHT].down) {
         pos.x += .1f;
     }
-    if (input[InputAction::CAM_DOWN].down) {
+    if (input[INPUT_CAM_DOWN].down) {
         pos.y -= .1f;
     }
-    if (input[InputAction::CAM_LEFT].down) {
+    if (input[INPUT_CAM_LEFT].down) {
         pos.x -= .1f;
     }
     return pos;
@@ -56,17 +56,17 @@ const f32 GRAVITY = .005f;
 const f32 TERMINAL_VELOCITY = 1.5f;
 Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_info) {
     Vec2f pos = {};
-    if (input[InputAction::RIGHT].down) {
+    if (input[INPUT_RIGHT].down) {
         pos.x += .1f;
     }
-    if (input[InputAction::LEFT].down) {
+    if (input[INPUT_LEFT].down) {
         pos.x -= .1f;
     }
-    player->grounded = last_info.sides_touched.down;
+    player->grounded = last_info.sides_touched & DIR_DOWN;
 
     if (player->grounded) {
         player->velocity.y = 0;
-        if (input[InputAction::UP].down) {
+        if (input[INPUT_UP].down) {
             player->velocity.y = JUMP_VELOCITY;
         }
     }
@@ -144,6 +144,8 @@ bool check_collided(Rectf a, Rectf b) {
     return (overlap_x > 0 && overlap_y > 0);
 }
 
+
+
 const f32 PLAYER_MOVE_SPEED = .1f;
 const f32 COLLISION_EPSILON = .001f;
 Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Collision_Info* info) {
@@ -158,12 +160,12 @@ Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Colli
         f32 most_extreme_edge = player.posx + player.radiusx * sign;
         for (u32 i = 0; i < others_count; ++i) {
             Entity other = others[i];
-            if (other.type != Entity_Type::STATIC || !check_collided(player, other.rect)) continue;
+            if (other.type != ENTITY_STATIC || !check_collided(player, other.rect)) continue;
             f32 edge = other.posx - other.radiusx * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
-                if (sign > 0) info->sides_touched.right = true;
-                else          info->sides_touched.left  = true;
+                if (sign > 0) info->sides_touched |= DIR_RIGHT;
+                else          info->sides_touched |= DIR_LEFT;
             }
         }
         player.posx = most_extreme_edge - (player.radiusx + COLLISION_EPSILON) * sign;
@@ -179,12 +181,12 @@ Rectf try_move(Rectf player, Vec2f move, Entity* others, u32 others_count, Colli
         f32 most_extreme_edge = player.posy + player.radiusy * sign;
         for (u32 i = 0; i < others_count; ++i) {
             Entity other = others[i];
-            if (other.type != Entity_Type::STATIC || !check_collided(player, other.rect)) continue;
+            if (other.type != ENTITY_STATIC || !check_collided(player, other.rect)) continue;
             f32 edge = other.posy - other.radiusy * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
-                if (sign > 0) info->sides_touched.up   = true;
-                else          info->sides_touched.down = true;
+                if (sign > 0) info->sides_touched |= DIR_UP;
+                else          info->sides_touched |= DIR_DOWN;
             }
         }
         player.posy = most_extreme_edge - (player.radiusy + COLLISION_EPSILON) * sign;
@@ -199,7 +201,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
         Entity* object = result + added_count++;
         *object = last_objects[i];
         switch (object->type) {
-        case MONSTER:
+        case ENTITY_MONSTER:
             if (object->standing_on && object->standing_on->type) {
                 Entity* other = object->standing_on;
                 bool outside_right = object->posx + object->radiusx > other->posx + other->radiusx;
@@ -225,11 +227,11 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                 }
 
             }
-        case STATIC:
+        case ENTITY_STATIC:
             Rectf rect = object->rect;
-            if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER) object->type = Entity_Type::NONE;
+            if (rect.radiusx < CULL_OBJECT_IF_SMALLER || rect.radiusy < CULL_OBJECT_IF_SMALLER) object->type = ENTITY_NONE;
             break;
-        case NONE:
+        case ENTITY_NONE:
         default:
             object->is_an_existing_entity = false;
         }
@@ -266,10 +268,10 @@ u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Entity
     } else {
         Rectf screen_rect = points_to_rect(drawing.pos, mouse->pos);
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
-        *data = Entity{ Entity_Type::STATIC, true, move_rect(scaled_rect, camera.pos)};
+        *data = Entity{ ENTITY_STATIC, true, move_rect(scaled_rect, camera.pos)};
         drawing.active = false;
 
-        *(data + 1) = Entity{ Entity_Type::MONSTER, true, Rectf{ data->posx, data->posy + data->radiusy * 1.5f, data->radiusx * .3f, data->radiusy * .3f } };
+        *(data + 1) = Entity{ ENTITY_MONSTER, true, Rectf{ data->posx, data->posy + data->radiusy * 1.5f, data->radiusx * .3f, data->radiusy * .3f } };
         //(data + 1)->standing_on = data;
         (data + 1)->move_speed = .1f;
         return 2;
@@ -289,7 +291,7 @@ void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera
     if (!mouse->right.down) return;
     u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count);
     if (overlap_index < obstacles_count) {
-        obstacles[overlap_index].type = Entity_Type::NONE;
+        obstacles[overlap_index].type = ENTITY_NONE;
     }
 }
 
@@ -312,7 +314,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     erase_obstacle(this_frame->mouse, this_frame->objects, this_frame->objects_count, this_frame->camera);
 
 
-    if (this_frame->input[InputAction::EDITOR_SAVE].presses) {
+    if (this_frame->input[INPUT_EDITOR_SAVE].presses) {
         u32 persistent_reset = persistent_state->current;
         u32 total_length = 0;
         for (int i = 0; i < this_frame->objects_count; ++i) {

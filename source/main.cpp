@@ -14,37 +14,37 @@ void error_callback(int error, const char* description) {
     fprintf(stderr, "Error: %s\n", description);
 }
 
-Input global_inputs[INPUT_COUNT] = {};
+Input global_inputs[INPUT_ENUM_COUNT] = {};
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key < 0) return;
     InputAction input_key;
     switch(key) {
         case GLFW_KEY_E:
-            input_key = InputAction::UP;
+            input_key = INPUT_UP;
             break;
         case GLFW_KEY_F:
-            input_key = InputAction::RIGHT;
+            input_key = INPUT_RIGHT;
             break;
         case GLFW_KEY_D:
-            input_key = InputAction::DOWN;
+            input_key = INPUT_DOWN;
             break;
         case GLFW_KEY_S:
-            input_key = InputAction::LEFT;
+            input_key = INPUT_LEFT;
             break;
         case GLFW_KEY_I:
-            input_key = InputAction::CAM_UP;
+            input_key = INPUT_CAM_UP;
             break;
         case GLFW_KEY_L:
-            input_key = InputAction::CAM_RIGHT;
+            input_key = INPUT_CAM_RIGHT;
             break;
         case GLFW_KEY_K:
-            input_key = InputAction::CAM_DOWN;
+            input_key = INPUT_CAM_DOWN;
             break;
         case GLFW_KEY_J:
-            input_key = InputAction::CAM_LEFT;
+            input_key = INPUT_CAM_LEFT;
             break;
         case GLFW_KEY_F6:
-            input_key = InputAction::EDITOR_SAVE;
+            input_key = INPUT_EDITOR_SAVE;
             break;
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, 1);
@@ -217,7 +217,7 @@ u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
             f32 posy    = strtof(text + LENGTH(RECT_POSY), &text);
             f32 radiusx = strtof(text + LENGTH(RECT_RADIUSX), &text);
             f32 radiusy = strtof(text + LENGTH(RECT_RADIUSY), &text);
-            result[count++] = Entity{ Entity_Type::STATIC, true, Rectf{ posx, posy, radiusx, radiusy }};
+            result[count++] = Entity{ ENTITY_STATIC, true, Rectf{ posx, posy, radiusx, radiusy }};
         }
         while (true) {
             if (text - text_start + 1 >= text_size) return count;
@@ -230,7 +230,7 @@ u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
 
 void transfer_input(Input* input) {
     memcpy(input, global_inputs, INPUT_SIZE);
-    for (int i = 0; i < INPUT_COUNT; ++i) {
+    for (int i = 0; i < INPUT_ENUM_COUNT; ++i) {
         global_inputs[i].presses = 0;
         global_inputs[i].releases = 0;
     }
