@@ -342,21 +342,30 @@ int main(void) {
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
-    float vertices[] = {
-        -1.f, -1.f, 0.0f, 0.f, 0.f,   //left bot
-         1.f, -1.f, 0.0f, 1.f, 0.f,   //right bot
-         1.f,  1.f, 0.0f, 1.f, 1.f,   //right top
-        -1.f, -1.f, 0.0f, 0.f, 0.f,   //left bot
-         1.f,  1.f, 0.0f, 1.f, 1.f,   //right top
-        -1.f,  1.f, 0.0f, 0.f, 1.f,   //left top
+    #define POS_COUNT 3
+    #define COLOR_COUNT 3
+    #define UV_COUNT 2
+    #define NUMBER_OF_VERTICES 6
+    #define VERTEX_COUNT (POS_COUNT + COLOR_COUNT + UV_COUNT)
+    #define VERTICES_COUNT (NUMBER_OF_VERTICES * VERTEX_COUNT) 
+    float vertices[VERTICES_COUNT] = {
+        -1.f, -1.f, 0.0f,   1.f, 1.f, 1.f,    0.f, 1.f,   //left bot
+         1.f, -1.f, 0.0f,   0.f, 0.f, 1.f,    1.f, 1.f,   //right bot
+         1.f,  1.f, 0.0f,   0.f, 1.f, 0.f,    1.f, 0.f,   //right top
+        -1.f, -1.f, 0.0f,   1.f, 1.f, 1.f,    0.f, 1.f,   //left bot
+         1.f,  1.f, 0.0f,   0.f, 1.f, 0.f,    1.f, 0.f,   //right top
+        -1.f,  1.f, 0.0f,   1.f, 1.f, 0.f,    0.f, 0.f,   //left top
     };
     unsigned int VBO;
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(0, POS_COUNT,   GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, COLOR_COUNT, GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)(POS_COUNT * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, UV_COUNT,    GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)((POS_COUNT + COLOR_COUNT) * sizeof(float)));
+    glEnableVertexAttribArray(2);
     //
     // Create memory arenas
     Arena persistent;
@@ -377,28 +386,28 @@ int main(void) {
     //
     // Load shaders
     u32 shader_program;
-    u32 text_shader_program;
+    //u32 text_shader_program;
     {
         u32 vertex_shader =        load_shader("../assets/vertex.txt",   persistent, GL_VERTEX_SHADER);
         u32 fragment_shader =      load_shader("../assets/fragment.txt", persistent, GL_FRAGMENT_SHADER);
-        u32 text_fragment_shader = load_shader("../assets/text_fragment.txt", persistent, GL_FRAGMENT_SHADER);
+        //u32 text_fragment_shader = load_shader("../assets/text_fragment.txt", persistent, GL_FRAGMENT_SHADER);
 
         shader_program = glCreateProgram();
         if (shader_program == 0) {
             printf("Failed to create shader program");
             return -1;
         }
-        text_shader_program = glCreateProgram();
-        if (shader_program == 0) {
-            printf("Failed to create shader program");
-            return -1;
-        }
+        //text_shader_program = glCreateProgram();
+        // if (text_shader_program == 0) {
+        //     printf("Failed to create shader program");
+        //     return -1;
+        // }
         glAttachShader(shader_program, vertex_shader);
         glAttachShader(shader_program, fragment_shader);
         glLinkProgram(shader_program);
-        glAttachShader(text_shader_program, vertex_shader);
-        glAttachShader(text_shader_program, text_fragment_shader);
-        glLinkProgram(text_shader_program);
+        // glAttachShader(text_shader_program, vertex_shader);
+        // glAttachShader(text_shader_program, text_fragment_shader);
+        // glLinkProgram(text_shader_program);
         glDeleteShader(vertex_shader);
         glDeleteShader(fragment_shader);
     }
@@ -408,20 +417,20 @@ int main(void) {
     {
         glGenTextures(1, &texture);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         int width;
         int height;
         int pixel_depth;
-        u8 *data = stbi_load("../assets/ASCII.png", &width, &height, &pixel_depth, 3);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        u8 *data = stbi_load("../assets/ASCII.png", &width, &height, &pixel_depth, 1);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         stbi_image_free(data);
-        glUseProgram(text_shader_program);
-        glUniform1i(glGetUniformLocation(text_shader_program, "sheet"), 0);
+        glUseProgram(shader_program);
+        glUniform1i(glGetUniformLocation(shader_program, "outTexture"), 0);
     }
     //
     // Get uniforms locations

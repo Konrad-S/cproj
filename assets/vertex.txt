@@ -1,10 +1,12 @@
 #version 330 core
 layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec2 aTexCoord;
+layout (location = 1) in vec3 aColor;
+layout (location = 2) in vec2 aTexCoord;
 uniform vec2 world_scale;
 uniform vec2 offset;
 uniform vec2 scale;
 uniform vec2 camera;
+out vec3 ourColor;
 out vec2 TexCoord;
 void main() {
    vec3 size = aPos * vec3(scale, 1);
@@ -13,4 +15,5 @@ void main() {
    vec3 screen = screen_offbyhalf + vec3(-1.0, -1.0, 0);
    gl_Position = vec4(screen, 1.0);
    TexCoord = aTexCoord;
+   ourColor = aColor;
 }
