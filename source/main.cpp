@@ -296,7 +296,7 @@ u32 load_shader(const char* file_name, Arena arena, GLenum shader_type)
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
         char* error_info = (char*)arena.data + arena.current;
         glGetShaderInfoLog(shader, log_length, nullptr, error_info);
-        printf("Shader compilation error:\n%s", error_info);
+        printf("Shader compilation error in '%s':\n%s", file_name, error_info);
         assert(false);
     }
     return shader;
@@ -386,28 +386,29 @@ int main(void) {
     //
     // Load shaders
     u32 shader_program;
-    //u32 text_shader_program;
+    u32 text_shader_program;
     {
         u32 vertex_shader =        load_shader("../assets/vertex.txt",   persistent, GL_VERTEX_SHADER);
         u32 fragment_shader =      load_shader("../assets/fragment.txt", persistent, GL_FRAGMENT_SHADER);
-        //u32 text_fragment_shader = load_shader("../assets/text_fragment.txt", persistent, GL_FRAGMENT_SHADER);
+        u32 text_fragment_shader = load_shader("../assets/text_fragment.txt", persistent, GL_FRAGMENT_SHADER);
+        u32 text_vertex_shader =   load_shader("../assets/text_vertex.txt", persistent, GL_VERTEX_SHADER);
 
         shader_program = glCreateProgram();
         if (shader_program == 0) {
             printf("Failed to create shader program");
             return -1;
         }
-        //text_shader_program = glCreateProgram();
-        // if (text_shader_program == 0) {
-        //     printf("Failed to create shader program");
-        //     return -1;
-        // }
+        text_shader_program = glCreateProgram();
+        if (text_shader_program == 0) {
+            printf("Failed to create shader program");
+            return -1;
+        }
         glAttachShader(shader_program, vertex_shader);
         glAttachShader(shader_program, fragment_shader);
         glLinkProgram(shader_program);
-        // glAttachShader(text_shader_program, vertex_shader);
-        // glAttachShader(text_shader_program, text_fragment_shader);
-        // glLinkProgram(text_shader_program);
+        glAttachShader(text_shader_program, text_vertex_shader);
+        glAttachShader(text_shader_program, text_fragment_shader);
+        glLinkProgram(text_shader_program);
         glDeleteShader(vertex_shader);
         glDeleteShader(fragment_shader);
     }
@@ -429,8 +430,8 @@ int main(void) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         stbi_image_free(data);
-        glUseProgram(shader_program);
-        glUniform1i(glGetUniformLocation(shader_program, "outTexture"), 0);
+        glUseProgram(text_shader_program);
+        glUniform1i(glGetUniformLocation(text_shader_program, "ourTexture"), 0);
     }
     //
     // Get uniforms locations
@@ -505,11 +506,15 @@ int main(void) {
         glClearColor(.2f, .5f, .5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUniform2f(camera_location, this_frame->camera.posx, this_frame->camera.posy);
 
-        glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(VAO);
 
+        glUseProgram(text_shader_program);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glUseProgram(shader_program);
+        glUniform2f(camera_location, this_frame->camera.posx, this_frame->camera.posy);
+        
         for (int i = 0; i < this_frame->objects_count; i++) {
             Entity object = this_frame->objects[i];
             if (!object.type) continue;
@@ -530,6 +535,7 @@ int main(void) {
             glUniform4f(color_location, 0, 0, 1, 0.5f);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
+
 
         glfwSwapBuffers(window);
         global_mouse.left.presses = 0;
