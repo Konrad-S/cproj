@@ -342,19 +342,19 @@ int main(void) {
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
-    #define POS_COUNT 3
+    #define POS_COUNT 2
     #define COLOR_COUNT 3
     #define UV_COUNT 2
     #define NUMBER_OF_VERTICES 6
     #define VERTEX_COUNT (POS_COUNT + COLOR_COUNT + UV_COUNT)
     #define VERTICES_COUNT (NUMBER_OF_VERTICES * VERTEX_COUNT) 
     float vertices[VERTICES_COUNT] = {
-        -1.f, -1.f, 0.0f,   1.f, 1.f, 1.f,    0.f, 1.f,   //left bot
-         1.f, -1.f, 0.0f,   0.f, 0.f, 1.f,    1.f, 1.f,   //right bot
-         1.f,  1.f, 0.0f,   0.f, 1.f, 0.f,    1.f, 0.f,   //right top
-        -1.f, -1.f, 0.0f,   1.f, 1.f, 1.f,    0.f, 1.f,   //left bot
-         1.f,  1.f, 0.0f,   0.f, 1.f, 0.f,    1.f, 0.f,   //right top
-        -1.f,  1.f, 0.0f,   1.f, 1.f, 0.f,    0.f, 0.f,   //left top
+        -1.f, -1.f,   1.f, 1.f, 1.f,    0.f, 1.f,   //left bot
+         1.f, -1.f,   0.f, 0.f, 1.f,    1.f, 1.f,   //right bot
+         1.f,  1.f,   0.f, 1.f, 0.f,    1.f, 0.f,   //right top
+        -1.f, -1.f,   1.f, 1.f, 1.f,    0.f, 1.f,   //left bot
+         1.f,  1.f,   0.f, 1.f, 0.f,    1.f, 0.f,   //right top
+        -1.f,  1.f,   1.f, 1.f, 0.f,    0.f, 0.f,   //left top
     };
     unsigned int VBO;
     glGenBuffers(1, &VBO);
@@ -366,6 +366,10 @@ int main(void) {
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(2, UV_COUNT,    GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)((POS_COUNT + COLOR_COUNT) * sizeof(float)));
     glEnableVertexAttribArray(2);
+
+    
+
+    
     //
     // Create memory arenas
     Arena persistent;
@@ -426,7 +430,7 @@ int main(void) {
         int width;
         int height;
         int pixel_depth;
-        u8 *data = stbi_load("../assets/ASCII.png", &width, &height, &pixel_depth, 1);
+        u8 *data = stbi_load("../assets/ASCII.bmp", &width, &height, &pixel_depth, 1);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         stbi_image_free(data);

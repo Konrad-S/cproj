@@ -1,9 +1,24 @@
 #version 330 core
-layout (location = 0) in vec3 aPos;
+layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec3 aColor;
 layout (location = 2) in vec2 aTexCoord;
+layout (location = 3) in vec2 instance_pos;
+layout (location = 4) in vec2 instance_offset;
+
 out vec2 TexCoord;
+
+uniform vec2 pixel_scale;
+
 void main() {
-   gl_Position = vec4(aPos, 1);
-   TexCoord = aTexCoord;
+   vec2 draw_offset = vec2(1,-1);
+   vec2 char_offset = vec2(25, 1);
+   
+   vec2 sprite_size = vec2(8, 16);
+   vec2 screen_to_draw = vec2(1./800., 1./600.);
+   vec2 screen_to_sprite = sprite_size * screen_to_draw;
+   vec2 sheet_to_sprite = vec2(1./40., 1./7.);
+
+   vec2 draw_pos = (aPos + vec2(1, -1) + 2 * draw_offset) * screen_to_sprite + vec2(-1, 1);
+   gl_Position = vec4(draw_pos, 0, 1);
+   TexCoord = (aTexCoord + char_offset) * (sheet_to_sprite);
 }
