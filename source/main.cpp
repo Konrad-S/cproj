@@ -339,16 +339,16 @@ int main(void) {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     //
     // Setup openGL buffers 
-    unsigned int VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-    #define POS_COUNT 2
-    #define COLOR_COUNT 3
-    #define UV_COUNT 2
-    #define NUMBER_OF_VERTICES 6
-    #define VERTEX_COUNT (POS_COUNT + COLOR_COUNT + UV_COUNT)
-    #define VERTICES_COUNT (NUMBER_OF_VERTICES * VERTEX_COUNT) 
-    float vertices[VERTICES_COUNT] = {
+    unsigned int rect_VAO;
+    glGenVertexArrays(1, &rect_VAO);
+    glBindVertexArray(rect_VAO);
+    const u8 POS_COUNT = 2;
+    const u8 COLOR_COUNT = 3;
+    const u8 UV_COUNT = 2;
+    const u8 NUMBER_OF_VERTICES = 6;
+    const u8 VERTEX_COUNT = (POS_COUNT + COLOR_COUNT + UV_COUNT);
+    const u8 VERTICES_COUNT = (NUMBER_OF_VERTICES * VERTEX_COUNT); 
+    float rect_vertices[VERTICES_COUNT] = {
         -1.f, -1.f,   1.f, 1.f, 1.f,    0.f, 1.f,   //left bot
          1.f, -1.f,   0.f, 0.f, 1.f,    1.f, 1.f,   //right bot
          1.f,  1.f,   0.f, 1.f, 0.f,    1.f, 0.f,   //right top
@@ -356,10 +356,10 @@ int main(void) {
          1.f,  1.f,   0.f, 1.f, 0.f,    1.f, 0.f,   //right top
         -1.f,  1.f,   1.f, 1.f, 0.f,    0.f, 0.f,   //left top
     };
-    unsigned int VBO;
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    unsigned int rect_VBO;
+    glGenBuffers(1, &rect_VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, rect_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(rect_vertices), rect_vertices, GL_STATIC_DRAW);
     glVertexAttribPointer(0, POS_COUNT,   GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, COLOR_COUNT, GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)(POS_COUNT * sizeof(float)));
@@ -367,9 +367,42 @@ int main(void) {
     glVertexAttribPointer(2, UV_COUNT,    GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)((POS_COUNT + COLOR_COUNT) * sizeof(float)));
     glEnableVertexAttribArray(2);
 
-    
+    //
+    // Setup text VAO
+    unsigned int text_VAO;
+    glGenVertexArrays(1, &text_VAO);
+    glBindVertexArray(text_VAO);
 
-    
+    // Use the same VBO as we used for rects,
+    glBindBuffer(GL_ARRAY_BUFFER, rect_VBO);
+    glVertexAttribPointer(0, POS_COUNT,   GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, COLOR_COUNT, GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)(POS_COUNT * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, UV_COUNT,    GL_FLOAT, GL_FALSE, VERTEX_COUNT * sizeof(float), (void*)((POS_COUNT + COLOR_COUNT) * sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    const u8 TEXT_POS_COUNT = 2;
+    const u8 TEXT_OFFSET_COUNT = 2;
+    const u8 NUMBER_OF_CHARS = 2;
+    const u8 TEXT_VERTEX_COUNT = TEXT_POS_COUNT + TEXT_OFFSET_COUNT;
+    const u8 TEXT_VERTICES_COUNT = TEXT_VERTEX_COUNT * NUMBER_OF_CHARS;
+    float text_vertices[TEXT_VERTICES_COUNT] = {
+        0.f, -0.f,   1.f, 0.f,
+        1.f, -0.f,   2.f, 0.f,
+    };
+    unsigned int text_VBO;
+    glGenBuffers(1, &text_VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, text_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(text_vertices), text_vertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(3, TEXT_POS_COUNT,    GL_FLOAT, GL_FALSE, (TEXT_VERTEX_COUNT) * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(3);
+    glVertexAttribDivisor(3, 1);
+    glVertexAttribPointer(4, TEXT_OFFSET_COUNT, GL_FLOAT, GL_FALSE, (TEXT_VERTEX_COUNT) * sizeof(float), (void*)((TEXT_POS_COUNT) * sizeof(float)));
+    glEnableVertexAttribArray(4);
+    glVertexAttribDivisor(4, 1);
+
+
     //
     // Create memory arenas
     Arena persistent;
@@ -509,15 +542,17 @@ int main(void) {
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
-
-        glBindVertexArray(VAO);
-
+        //
+        // draw text
         glUseProgram(text_shader_program);
         glBindTexture(GL_TEXTURE_2D, texture);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glBindVertexArray(text_VAO);
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, NUMBER_OF_CHARS);
+        //
+        // draw rects
         glUseProgram(shader_program);
         glUniform2f(camera_location, this_frame->camera.posx, this_frame->camera.posy);
+        glBindVertexArray(rect_VAO);
         
         for (int i = 0; i < this_frame->objects_count; i++) {
             Entity object = this_frame->objects[i];
