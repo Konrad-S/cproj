@@ -57,11 +57,11 @@ struct Entity {
         Rectf rect;
         RECTF_DEFINITION(ANONYMOUS);
     };
-    Entity* standing_on;
-    bool    grounded;
-    Vec2f   velocity;
     f32     move_speed;
     s8      facing;
+    bool    grounded;
+    Entity* standing_on;
+    Vec2f   velocity;
 };
 typedef Entity Player;
 

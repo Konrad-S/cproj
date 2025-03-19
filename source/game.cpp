@@ -25,8 +25,9 @@ u32 arena_remaining(Arena arena) {
     return arena.capacity - arena.current;
 }
 
-u32 serialize_rectf(Rectf rect, Arena arena) {
-    u32 chars_written = snprintf((char* const)arena_current(arena), arena_remaining(arena), "Rectf: posx=%g posy=%g radiusx=%g radiusy=%g\n", rect.posx, rect.posy, rect.radiusx, rect.radiusy);
+u32 serialize_entity(Entity entity, Arena arena) {
+    Rectf rect = entity.rect;
+    u32 chars_written = snprintf((char* const)arena_current(arena), arena_remaining(arena), "Entity: type=%d posx=%g posy=%g radiusx=%g radiusy=%g move_speed=%g facing=%d\n", entity.type, rect.posx, rect.posy, rect.radiusx, rect.radiusy, entity.move_speed, entity.facing);
     return chars_written;
 }
 
@@ -299,7 +300,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         for (int i = 0; i < this_frame->objects_count; ++i) {
             Entity object = this_frame->objects[i];
             if (!object.type) continue;
-            u32 serialized_length = serialize_rectf(object.rect, *persistent_state);
+            u32 serialized_length = serialize_entity(object, *persistent_state);
             total_length += serialized_length;
             persistent_state->current += serialized_length;
         }

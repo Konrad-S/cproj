@@ -200,24 +200,31 @@ bool write_entire_file(const char* file_path, const char* content, u32 content_l
 
 // Idea: Loop over entire text and get list of indices of new lines
 // Seems like a good way to deal with incorrect entries
-#define RECT_START "Rectf:"
-#define RECT_POSX " posx="
-#define RECT_POSY " posy="
-#define RECT_RADIUSX " radiusx="
-#define RECT_RADIUSY " radiusy="
+// Entity: type=1 posx=123.4 posy=123.4 radiusx=123.4 radiusy=123.4 move_speed=123.4 facing=-1
+#define ENTITY_START "Entity:"
+#define ENTITY_TYPE " type="
+#define ENTITY_POSX " posx="
+#define ENTITY_POSY " posy="
+#define ENTITY_RADIUSX " radiusx="
+#define ENTITY_RADIUSY " radiusy="
+#define ENTITY_MOVE_SPEED " move_speed="
+#define ENTITY_FACING " facing="
 #define LENGTH(s) (sizeof(s) - 1)
 u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
     u32 count = 0;
     char* text = text_start;
-    u32 start_size = LENGTH(RECT_START);
+    u32 start_size = LENGTH(ENTITY_START);
     while (true) {
-        if (memcmp(text, RECT_START, start_size) == 0) {
+        if (memcmp(text, ENTITY_START, start_size) == 0) {
             text += start_size;
-            f32 posx    = strtof(text + LENGTH(RECT_POSX), &text);
-            f32 posy    = strtof(text + LENGTH(RECT_POSY), &text);
-            f32 radiusx = strtof(text + LENGTH(RECT_RADIUSX), &text);
-            f32 radiusy = strtof(text + LENGTH(RECT_RADIUSY), &text);
-            result[count++] = Entity{ ENTITY_STATIC, true, Rectf{ posx, posy, radiusx, radiusy }};
+            Entity_Type type = (Entity_Type)strtol(text + LENGTH(ENTITY_TYPE), &text, 10);
+            f32 posx    = strtof(text + LENGTH(ENTITY_POSX), &text);
+            f32 posy    = strtof(text + LENGTH(ENTITY_POSY), &text);
+            f32 radiusx = strtof(text + LENGTH(ENTITY_RADIUSX), &text);
+            f32 radiusy = strtof(text + LENGTH(ENTITY_RADIUSY), &text);
+            f32 move_speed = strtof(text + LENGTH(ENTITY_MOVE_SPEED), &text);
+            s8 facing = (s8)strtol(text + LENGTH(ENTITY_FACING), &text, 10);
+            result[count++] = Entity{ type, true, Rectf{ posx, posy, radiusx, radiusy }, move_speed, facing};
         }
         while (true) {
             if (text - text_start + 1 >= text_size) return count;
