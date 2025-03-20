@@ -15,14 +15,15 @@ void error_callback(int error, const char* description) {
 }
 
 Input global_inputs[INPUT_ENUM_COUNT] = {};
-char global_text_input[32] = {};
-u8 global_text_input_count = 0;
+#define INPUT_TEXT_CAPACITY 32
+char global_input_text[INPUT_TEXT_CAPACITY] = {};
+u8 global_input_text_count = 0;
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key < 0) return;
     InputAction input_key;
 
-    if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) {
-        global_text_input[global_text_input_count++] = (char)key;
+    if (action == GLFW_PRESS && key >= GLFW_KEY_A && key <= GLFW_KEY_Z && global_input_text_count < INPUT_TEXT_CAPACITY) {
+        global_input_text[global_input_text_count++] = (char)key;
     }
 
     switch(key) {
@@ -321,14 +322,11 @@ u32 text_to_char_coords(const char* text, u32 text_count, Vec2f starting_offset,
     int i = 0;
     f32 x_pos = starting_offset.x;
     f32 y_pos = starting_offset.y;
-
-    Pos_Offset* start = (Pos_Offset*)arena_current(arena);
-
     while (i < text_count && text[i] != '\0') {
         char c = text[i++];
         if (c == '\n') {
             x_pos = starting_offset.x;
-            ++y_pos;
+            --y_pos;
             continue;
         }
         //40 * 7
@@ -542,7 +540,11 @@ int main(void) {
     // Game_Info is stored at start of the persistent arena.
     Game_Info* game_info = (Game_Info*)arena_append(&persistent, sizeof(Game_Info));
     game_info->platform_read_entire_file = read_entire_file;
-    game_info->platform_write_entire_file = write_entire_file; 
+    game_info->platform_write_entire_file = write_entire_file;
+    game_info->display_text_count = 0;
+    game_info->input_text = global_input_text;
+    game_info->display_text_chars_to_draw_count = 0;
+    game_info->input_text_count = 0;
     //
     // Load game .dll
     char* game_dll_filename = "game.dll";
@@ -577,6 +579,7 @@ int main(void) {
 
         transfer_input(this_frame->input);
 
+        game_info->input_text_count = global_input_text_count;
         this_frame->mouse        = &global_mouse;
         this_frame->camera.scale = last_frame->camera.scale;
         this_frame->drawing      = last_frame->drawing;
@@ -591,12 +594,13 @@ int main(void) {
         glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(text_VAO);
 
-        const char* test_string = "test string 123";
-        u32 chars_to_draw_count = text_to_char_coords(test_string, 15, Vec2f{0, 0}, persistent);
-        glBindBuffer(GL_ARRAY_BUFFER, text_VBO);
-        glBufferData(GL_ARRAY_BUFFER, chars_to_draw_count * sizeof(Pos_Offset), arena_current(persistent), GL_STATIC_DRAW);
+        if (game_info->input_text_count) {
+            game_info->display_text_chars_to_draw_count = text_to_char_coords(game_info->display_text, game_info->display_text_count, Vec2f{0, 0}, persistent);
+            glBindBuffer(GL_ARRAY_BUFFER, text_VBO);
+            glBufferData(GL_ARRAY_BUFFER, game_info->display_text_chars_to_draw_count * sizeof(Pos_Offset), arena_current(persistent), GL_STATIC_DRAW);
+        }
 
-        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, chars_to_draw_count);
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, game_info->display_text_chars_to_draw_count);
         //
         // draw rects
         glUseProgram(shader_program);
@@ -630,7 +634,7 @@ int main(void) {
         global_mouse.left.releases = 0;
         global_mouse.right.presses = 0;
         global_mouse.right.releases = 0;
-        global_text_input_count = 0;
+        global_input_text_count = 0;
         glfwPollEvents();
         even_frame = !even_frame;
     }

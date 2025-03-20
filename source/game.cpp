@@ -282,11 +282,10 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
 
     this_frame->camera.pos = move_camera(last_frame->camera.pos, this_frame->input);
     
-    this_frame->display_text = last_frame->display_text;
-    this_frame->display_text = last_frame->display_text;
-    for (int i = 0; i < this_frame->input_text_count; ++i) {
-        u32 count = this_frame->display_text_count++;
-        this_frame->display_text[count] = this_frame->input_text[i];
+    for (int i = 0; i < game_info->input_text_count; ++i) {
+        u32 count = game_info->display_text_count++;
+        count = MIN(count, DISPLAY_TEXT_CAPACITY);
+        game_info->display_text[count] = game_info->input_text[i];
     }
 
 
