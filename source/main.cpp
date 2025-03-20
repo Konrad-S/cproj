@@ -15,9 +15,16 @@ void error_callback(int error, const char* description) {
 }
 
 Input global_inputs[INPUT_ENUM_COUNT] = {};
+char global_text_input[32] = {};
+u8 global_text_input_count = 0;
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key < 0) return;
     InputAction input_key;
+
+    if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z) {
+        global_text_input[global_text_input_count++] = (char)key;
+    }
+
     switch(key) {
         case GLFW_KEY_E:
             input_key = INPUT_UP;
@@ -126,7 +133,7 @@ u32 read_entire_file(Arena arena, const char* file_path) {
     }
     DWORD bytes_read = 0;
     if (do_read_file) {
-        bool success = ReadFile(handle, arena.data, arena.capacity - arena.current, &bytes_read, NULL);
+        bool success = ReadFile(handle, arena_current(arena), arena.capacity - arena.current, &bytes_read, NULL);
         if (!success) {
             printf("Failed reading from: %s\nError code: %d\n", file_path, GetLastError());
 
@@ -394,7 +401,9 @@ int main(void) {
     unsigned int text_VBO;
     glGenBuffers(1, &text_VBO);
     glBindBuffer(GL_ARRAY_BUFFER, text_VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(text_vertices), text_vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(text_vertices), text_vertices, GL_STATIC_DRAW); // todo : Update this with an array created from a string, 
+                                                                                         // whenever the text content needs to be updated
+                                                                                         // aka not every frame
     glVertexAttribPointer(3, TEXT_POS_COUNT,    GL_FLOAT, GL_FALSE, (TEXT_VERTEX_COUNT) * sizeof(float), (void*)0);
     glEnableVertexAttribArray(3);
     glVertexAttribDivisor(3, 1);
@@ -482,11 +491,13 @@ int main(void) {
     glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     //
     // Setup game state
+    // move this to game, have bool for if state has been set up
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
     this_frame->camera.scale = scale * 2;
     this_frame->player.rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
+    //this_frame->display_text = (char*)arena_append(&persistent, 64);
     //
     // Load save file
     {
@@ -581,6 +592,7 @@ int main(void) {
         global_mouse.left.releases = 0;
         global_mouse.right.presses = 0;
         global_mouse.right.releases = 0;
+        global_text_input_count = 0;
         glfwPollEvents();
         even_frame = !even_frame;
     }

@@ -281,6 +281,13 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
 
     this_frame->camera.pos = move_camera(last_frame->camera.pos, this_frame->input);
     
+    this_frame->display_text = last_frame->display_text;
+    this_frame->display_text = last_frame->display_text;
+    for (int i = 0; i < this_frame->input_text_count; ++i) {
+        u32 count = this_frame->display_text_count++;
+        this_frame->display_text[count] = this_frame->input_text[i];
+    }
+
 
     this_frame->objects = (Entity*)(frame_state->data + frame_state->current);
     this_frame->objects_count = update_objects(last_frame->objects, last_frame->objects_count, this_frame->objects);

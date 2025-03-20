@@ -116,6 +116,10 @@ struct Camera {
 struct Frame_Info {
     Player  player;
     Input   input[INPUT_ENUM_COUNT];
+    char*   input_text;
+    u8      input_text_count;
+    char*   display_text;
+    u32     display_text_count;
     Camera  camera;
     Drawing_Obstacle drawing;
     Mouse*  mouse;
