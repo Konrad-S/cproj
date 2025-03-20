@@ -316,6 +316,31 @@ u32 load_shader(const char* file_name, Arena arena, GLenum shader_type)
     return shader;
 }
 
+
+u32 text_to_char_coords(const char* text, u32 text_count, Vec2f starting_offset, Arena arena) {
+    int i = 0;
+    f32 x_pos = starting_offset.x;
+    f32 y_pos = starting_offset.y;
+
+    Pos_Offset* start = (Pos_Offset*)arena_current(arena);
+
+    while (i < text_count && text[i] != '\0') {
+        char c = text[i++];
+        if (c == '\n') {
+            x_pos = starting_offset.x;
+            ++y_pos;
+            continue;
+        }
+        //40 * 7
+        f32 x_offset = c % 40;
+        f32 y_offset = c / 40;
+        Pos_Offset* result = (Pos_Offset*)arena_append(&arena, sizeof(Pos_Offset));
+        *result = Pos_Offset{ x_pos, y_pos, x_offset, y_offset };
+        ++x_pos;
+    }
+    return i;
+}
+
 int main(void) {
     //
     // Initialize GLFW
@@ -565,7 +590,13 @@ int main(void) {
         glUseProgram(text_shader_program);
         glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(text_VAO);
-        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, NUMBER_OF_CHARS);
+
+        const char* test_string = "test string 123";
+        u32 chars_to_draw_count = text_to_char_coords(test_string, 15, Vec2f{0, 0}, persistent);
+        glBindBuffer(GL_ARRAY_BUFFER, text_VBO);
+        glBufferData(GL_ARRAY_BUFFER, chars_to_draw_count * sizeof(Pos_Offset), arena_current(persistent), GL_STATIC_DRAW);
+
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, chars_to_draw_count);
         //
         // draw rects
         glUseProgram(shader_program);

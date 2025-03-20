@@ -37,11 +37,17 @@ struct Vec2f {
     };
 };
 #define POS_F32    union { Vec2f pos;    struct { f32 posx;    f32 posy;    }; }
+#define OFFSET_F32    union { Vec2f offset;    struct { f32 offsetx;    f32 offsety;    }; }
 #define RADIUS_F32 union { Vec2f radius; struct { f32 radiusx; f32 radiusy; }; }
 
 #define ANONYMOUS
 #define RECTF_DEFINITION(name) struct name { POS_F32; RADIUS_F32; }
 RECTF_DEFINITION(Rectf);
+
+struct Pos_Offset {
+    POS_F32;
+    OFFSET_F32;
+};
 
 enum Entity_Type {
     ENTITY_NONE = 0,
