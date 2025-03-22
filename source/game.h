@@ -123,7 +123,6 @@ struct Frame_Info {
     Player  player;
     Input   input[INPUT_ENUM_COUNT];
     Camera  camera;
-    Drawing_Obstacle drawing;
     Mouse*  mouse;
     Entity* objects;
     u32     objects_count;
@@ -138,12 +137,14 @@ typedef bool (*Platform_Write_Entire_File)(const char*, const char*, u32);
 struct Game_Info {
     Platform_Read_Entire_File platform_read_entire_file;
     Platform_Write_Entire_File platform_write_entire_file;
+    bool    game_state_is_initialiezed = false;
 #define DISPLAY_TEXT_CAPACITY 255
     char    display_text[DISPLAY_TEXT_CAPACITY];
-    u32     display_text_count;
-    u32     display_text_chars_to_draw_count;
+    u32     display_text_count = 0;
+    u32     display_text_chars_to_draw_count = 0;
     char*   input_text;
-    u8      input_text_count;
+    u8      input_text_count = 0;
+    Drawing_Obstacle drawing;
     // Stuff in Frame_Info that we always copy over without modification
     // and we don't care what the previous frames value was, should go here instead.
 };

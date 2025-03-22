@@ -6,12 +6,12 @@
 
 //
 // Arena
-//
-
-
-// these should use void *
 u8* arena_current(Arena arena) {
     return arena.data + arena.current;
+}
+
+u8* arena_current(Arena* arena) {
+    return arena->data + arena->current;
 }
 
 u8* arena_append(Arena* arena, u32 data_size) {
@@ -274,13 +274,79 @@ void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera
     }
 }
 
+Camera update_camera(Camera camera, Input* input) {
+    camera.pos = move_camera(camera.pos, input);
+    return camera;
+}
+
+void init_game_state(Game_Info* game_info, Frame_Info* this_frame, Frame_Info* last_frame) {
+    f32 scale = .05f;
+    this_frame->camera.scale = last_frame->camera.scale = scale * 2;
+    this_frame->player.rect  = last_frame->player.rect  = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
+
+    game_info->display_text_count = 0;
+    game_info->display_text_chars_to_draw_count = 0;
+    game_info->input_text_count = 0;
+    game_info->drawing.active = false;
+
+    game_info->game_state_is_initialiezed = true;
+}
+
+// Idea: Loop over entire text and get list of indices of new lines
+// Seems like a good way to deal with incorrect entries
+// Entity: type=1 posx=123.4 posy=123.4 radiusx=123.4 radiusy=123.4 move_speed=123.4 facing=-1
+#define ENTITY_START "Entity:"
+#define ENTITY_TYPE " type="
+#define ENTITY_POSX " posx="
+#define ENTITY_POSY " posy="
+#define ENTITY_RADIUSX " radiusx="
+#define ENTITY_RADIUSY " radiusy="
+#define ENTITY_MOVE_SPEED " move_speed="
+#define ENTITY_FACING " facing="
+#define LENGTH(s) (sizeof(s) - 1)
+u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
+    u32 count = 0;
+    char* text = text_start;
+    u32 start_size = LENGTH(ENTITY_START);
+    while (true) {
+        if (memcmp(text, ENTITY_START, start_size) == 0) {
+            text += start_size;
+            Entity_Type type = (Entity_Type)strtol(text + LENGTH(ENTITY_TYPE), &text, 10);
+            f32 posx    = strtof(text + LENGTH(ENTITY_POSX), &text);
+            f32 posy    = strtof(text + LENGTH(ENTITY_POSY), &text);
+            f32 radiusx = strtof(text + LENGTH(ENTITY_RADIUSX), &text);
+            f32 radiusy = strtof(text + LENGTH(ENTITY_RADIUSY), &text);
+            f32 move_speed = strtof(text + LENGTH(ENTITY_MOVE_SPEED), &text);
+            s8 facing = (s8)strtol(text + LENGTH(ENTITY_FACING), &text, 10);
+            result[count++] = Entity{ type, true, Rectf{ posx, posy, radiusx, radiusy }, move_speed, facing};
+        }
+        while (true) {
+            if (text - text_start + 1 >= text_size) return count;
+            if (text[0] == '\n') break;
+            ++text;
+        }
+        ++text;
+    }
+}
+
 bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
-    Frame_Info* this_frame = (Frame_Info*)frame_state->data;
     Game_Info* game_info = (Game_Info*)persistent_state->data;
+    Frame_Info* this_frame = (Frame_Info*)frame_state->data;
+    if (!game_info->game_state_is_initialiezed) {
+        init_game_state(game_info, this_frame, last_frame);
+        //
+        // Load save file
+        // This is stupid since we need to load into last frame, so last frames objects are put into this frames arena.
+        Arena temp_storage = *persistent_state;
+        last_frame->objects = (Entity*)arena_current(frame_state);
+        u32 file_size = game_info->platform_read_entire_file(temp_storage, "test.txt");
+        last_frame->objects_count = parse_savefile((char*)arena_current(temp_storage), file_size, last_frame->objects);
+        frame_state->current += sizeof(last_frame->objects[0]) * last_frame->objects_count;
+    }
     Player* player = &this_frame->player;
     *player = last_frame->player;
 
-    this_frame->camera.pos = move_camera(last_frame->camera.pos, this_frame->input);
+    this_frame->camera = update_camera(last_frame->camera, this_frame->input);
     
     for (int i = 0; i < game_info->input_text_count; ++i) {
         u32 count = game_info->display_text_count++;
@@ -296,7 +362,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 0, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
     player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 1, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
 
-    this_frame->objects_count += draw_obstacle(this_frame->drawing, this_frame->mouse, this_frame->camera, this_frame->objects + this_frame->objects_count);
+    this_frame->objects_count += draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame->objects + this_frame->objects_count);
     erase_obstacle(this_frame->mouse, this_frame->objects, this_frame->objects_count, this_frame->camera);
 
 

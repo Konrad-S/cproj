@@ -1,14 +1,9 @@
 do next:
-    text
-        load ascii texture
-        load into opengl
-        draw with offset / texture coords
         
 
     monster
 
     savefile
-        save more of entity
         move load to game layer
 
     build in sublime

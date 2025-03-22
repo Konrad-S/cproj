@@ -206,43 +206,6 @@ bool write_entire_file(const char* file_path, const char* content, u32 content_l
     return success;
 }
 
-// Idea: Loop over entire text and get list of indices of new lines
-// Seems like a good way to deal with incorrect entries
-// Entity: type=1 posx=123.4 posy=123.4 radiusx=123.4 radiusy=123.4 move_speed=123.4 facing=-1
-#define ENTITY_START "Entity:"
-#define ENTITY_TYPE " type="
-#define ENTITY_POSX " posx="
-#define ENTITY_POSY " posy="
-#define ENTITY_RADIUSX " radiusx="
-#define ENTITY_RADIUSY " radiusy="
-#define ENTITY_MOVE_SPEED " move_speed="
-#define ENTITY_FACING " facing="
-#define LENGTH(s) (sizeof(s) - 1)
-u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
-    u32 count = 0;
-    char* text = text_start;
-    u32 start_size = LENGTH(ENTITY_START);
-    while (true) {
-        if (memcmp(text, ENTITY_START, start_size) == 0) {
-            text += start_size;
-            Entity_Type type = (Entity_Type)strtol(text + LENGTH(ENTITY_TYPE), &text, 10);
-            f32 posx    = strtof(text + LENGTH(ENTITY_POSX), &text);
-            f32 posy    = strtof(text + LENGTH(ENTITY_POSY), &text);
-            f32 radiusx = strtof(text + LENGTH(ENTITY_RADIUSX), &text);
-            f32 radiusy = strtof(text + LENGTH(ENTITY_RADIUSY), &text);
-            f32 move_speed = strtof(text + LENGTH(ENTITY_MOVE_SPEED), &text);
-            s8 facing = (s8)strtol(text + LENGTH(ENTITY_FACING), &text, 10);
-            result[count++] = Entity{ type, true, Rectf{ posx, posy, radiusx, radiusy }, move_speed, facing};
-        }
-        while (true) {
-            if (text - text_start + 1 >= text_size) return count;
-            if (text[0] == '\n') break;
-            ++text;
-        }
-        ++text;
-    }
-}
-
 void transfer_input(Input* input) {
     memcpy(input, global_inputs, INPUT_SIZE);
     for (int i = 0; i < INPUT_ENUM_COUNT; ++i) {
@@ -516,35 +479,17 @@ int main(void) {
     GLuint scale_location = glGetUniformLocation(shader_program, "scale");
     GLuint camera_location = glGetUniformLocation(shader_program, "camera");
     GLuint color_location = glGetUniformLocation(shader_program, "color");
-    f32 scale = .05f;
-    glUseProgram(shader_program);
-    glUniform2f(world_scale_location, 1/(screen_width*scale), 1/(screen_height*scale));
     //
     // Setup game state
-    // move this to game, have bool for if state has been set up
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
-    this_frame->camera.scale = scale * 2;
-    this_frame->player.rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
-    //this_frame->display_text = (char*)arena_append(&persistent, 64);
-    //
-    // Load save file
-    {
-        Arena temp_storage = persistent;
-        this_frame->objects = (Entity*)arena_current(frame_arena_0);
-        u32 file_size = read_entire_file(temp_storage, "test.txt");
-        this_frame->objects_count = parse_savefile((char*)arena_current(temp_storage), file_size, this_frame->objects);
-        frame_arena_0.current += sizeof(Rectf) * this_frame->objects_count;
-    }
     // Game_Info is stored at start of the persistent arena.
     Game_Info* game_info = (Game_Info*)arena_append(&persistent, sizeof(Game_Info));
     game_info->platform_read_entire_file = read_entire_file;
     game_info->platform_write_entire_file = write_entire_file;
-    game_info->display_text_count = 0;
     game_info->input_text = global_input_text;
-    game_info->display_text_chars_to_draw_count = 0;
-    game_info->input_text_count = 0;
+    game_info->game_state_is_initialiezed = false;
     //
     // Load game .dll
     char* game_dll_filename = "game.dll";
@@ -581,8 +526,6 @@ int main(void) {
 
         game_info->input_text_count = global_input_text_count;
         this_frame->mouse        = &global_mouse;
-        this_frame->camera.scale = last_frame->camera.scale;
-        this_frame->drawing      = last_frame->drawing;
         game_wants_to_keep_running = game_code.update_function(frame_arena, last_frame, &persistent);
 
         float time = glfwGetTime();
@@ -605,6 +548,7 @@ int main(void) {
         // draw rects
         glUseProgram(shader_program);
         glUniform2f(camera_location, this_frame->camera.posx, this_frame->camera.posy);
+        glUniform2f(world_scale_location, 2/(screen_width*this_frame->camera.scale), 2/(screen_height*this_frame->camera.scale));
         glBindVertexArray(rect_VAO);
         
         for (int i = 0; i < this_frame->objects_count; i++) {
