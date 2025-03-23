@@ -45,4 +45,62 @@ Villages will have a way for you to fully become their color. "You should really
 
 Combat introduction: "Red gnats are crawling out of that hole, go get rid of them. Try not to get red on you, but if you do come back here to get Blue."
 
-Should stuff fight you past the midpoint of two colors? If you go back and forth between a red and blue guy, do they keep hitting you, or are both neutral? 
+Should stuff fight you past the midpoint of two colors? If you go back and forth between a red and blue guy, do they keep hitting you, or are both neutral?
+
+
+
+//
+//Design goals of combat system
+//
+Explore mechanics in a non-hostile / low stress environment.
+Player seeks deeper understanding of combat mechanics because there is an implication that discovering more will lead to additional axes of progression.
+All combat mechanics need to involve some component that could help with something more than just defeating monsters.
+    Moving the player.
+    Destroying a barrier. Or somehow unlocking something.
+    Preserving a limited resource.
+        "If you use this bomb to kill the monster, you don't have a bomb left to open the blocked passage."
+    Create a new entity that does one of the previous things in the list.
+
+These effects should not be able to trigger without a monster being involved, since the game is ABOUT fighting monsters, and learning about new ways to fight monsters.
+
+Examples of mechanics:
+    Jump on monster head to jump higher.
+    Push monster with enough force to destroy something else.
+    Monster killed in specific way drops a pickup.
+    Monster will cower when bomb is about to explode. Bomb can be used somewhere else in the level and the monster can be defeated elsewhere as it is cowering.
+    Frog monster pulls player to it. Put the monster where you want to go.
+    Spider monster snares player. Can be used to swing across gaps or rappel down hole. (Not climbing towards source since that is what the frog is for).
+        Spider and frog should still require some specific action from the player to avoid being hurt by their attacks.
+
+Level ideas:
+    Obvious thing to do is push monsters into eachother. The discovery is that you need to avoid pushing the monsters at eachother, since they need to be used to destroy something else.
+    Spider; 
+            s
+        ------------>
+        --      ---->
+        a       b
+
+        swing from a to b. Spider doesn't spawn at the right possision, you need to use other combat mechanics to move it.
+
+
+Player attack
+    used to reposition enemies and set them up for killing blows
+    some enemies take damage from it, some don't
+
+    Monsters that don't take damage will at first seem harder to defeat, which they are, having to use a specific thing they are vulnerable to in the level.
+    But this also means they can be repositioned freely without ever dying, which makes setting up complicated combos with them easier.
+
+    There could be two different weapon upgrades, one that increases and one that lowers weapon damage. New players should choose increased, late game players choose decreased.
+
+
+    All attacks are combination of pressing attack input and two directions.
+        up-down: slam down
+        down-up: jab up
+        right/left-up: sweep up
+        right/left-left/right: spin
+        right/left-down: disarm?
+        same direction twice: grab
+
+Pickups
+    many things can be picked up and thrown
+    Monsters can carry things, and be disarmed to drop them

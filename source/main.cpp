@@ -551,8 +551,8 @@ int main(void) {
         glUniform2f(world_scale_location, 2/(screen_width*this_frame->camera.scale), 2/(screen_height*this_frame->camera.scale));
         glBindVertexArray(rect_VAO);
         
-        for (int i = 0; i < this_frame->objects_count; i++) {
-            Entity object = this_frame->objects[i];
+        for (int i = 0; i < this_frame->entities_count; i++) {
+            Entity object = this_frame->entities[i];
             if (!object.type) continue;
             Rectf rect = object.rect;
             glUniform2f(offset_location, rect.posx, rect.posy);

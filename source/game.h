@@ -50,11 +50,12 @@ struct Pos_Offset {
 };
 
 enum Entity_Type {
-    ENTITY_NONE = 0,
-    ENTITY_PLAYER,
-    ENTITY_STATIC,
-    ENTITY_MONSTER,
+    ENTITY_NONE    = 0,
+    ENTITY_PLAYER  = 1,
+    ENTITY_STATIC  = 2,
+    ENTITY_MONSTER = 4,
 };
+typedef u16 Entity_Type_Flag;
 
 struct Entity {
     Entity_Type type;
@@ -124,11 +125,12 @@ struct Frame_Info {
     Input   input[INPUT_ENUM_COUNT];
     Camera  camera;
     Mouse*  mouse;
-    Entity* objects;
-    u32     objects_count;
     Rectf*  collisions;
     u32     collisions_count;
     Collision_Info collision_info;
+    #define ENTITIES_CAPACITY 2000
+    Entity  entities[ENTITIES_CAPACITY];
+    u32     entities_count;
 };
 
 typedef u32  (*Platform_Read_Entire_File)(Arena, const char*);

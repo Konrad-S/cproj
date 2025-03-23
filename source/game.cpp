@@ -99,10 +99,10 @@ Rectf rectf_overlap(Rectf a, Rectf b) {
     return Rectf{ cposx, cposy, half_overlap_x, half_overlap_y };
 }
 
-u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count) {
+u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count, Entity_Type_Flag types_to_check) {
     for (int i = 0; i < others_count; ++i) {
         Entity other = others[i];
-        if (!other.type) continue;
+        if (!(other.type & types_to_check)) continue;
         Rectf result = rectf_overlap(rect, other.rect);
         if (result.radiusx > 0 && result.radiusy > 0)
         {
@@ -112,12 +112,12 @@ u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count) {
     return others_count;
 }
 
-u32 first_overlap_index(u32 rect_index, Entity* others, u32 others_count) {
+u32 first_overlap_index_against_index(u32 rect_index, Entity* others, u32 others_count, Entity_Type_Flag types_to_check) {
     assert(rect_index < others_count);
     for (int i = 0; i < others_count; ++i) {
         if (i == rect_index) continue;
         Entity other = others[i];
-        if (!other.type) continue;
+        if (!(other.type & types_to_check)) continue;
         Rectf result = rectf_overlap(others[rect_index].rect, other.rect);
         if (result.radiusx > 0 && result.radiusy > 0)
         {
@@ -193,18 +193,21 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                     object->facing = 1;
                 }
                 object->posx += object->move_speed * object->facing;
+                // Point to this frames objects instead of last. The pointers relative position is the same.
+                Entity* last_object = last_objects + i;
+                object->standing_on = object - (last_object - last_object->standing_on);
             } else {
                 //fall until colliding
-                u32 overlap_index = first_overlap_index(i, last_objects, last_objects_count);
+                u32 overlap_index = first_overlap_index_against_index(i, last_objects, last_objects_count, ENTITY_STATIC);
                 if (overlap_index < last_objects_count) {
-                    object->standing_on = last_objects + overlap_index;
-                    Entity* other = object->standing_on;
+                    Entity* other = last_objects + overlap_index;
                     object->posy = other->posy + other->radiusy + object->radiusy;
                     object->facing = -1;
+                    object->standing_on = result + overlap_index;
                 } else {
+                    object->standing_on = NULL;
                     object->posy -= .1f;
                 }
-
             }
         case ENTITY_STATIC:
             Rectf rect = object->rect;
@@ -230,6 +233,7 @@ Rectf points_to_rect(Vec2f a, Vec2f b) {
 Rectf scale_rect(Rectf r, f32 scale) {
     return Rectf{ r.posx * scale, r.posy * scale, r.radiusx * scale, r.radiusy * scale };
 }
+
 Rectf move_rect(Rectf r, Vec2f dist) {
     return Rectf{ r.posx + dist.x, r.posy + dist.y, r.radius };
 }
@@ -251,7 +255,6 @@ u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Entity
         drawing.active = false;
 
         *(data + 1) = Entity{ ENTITY_MONSTER, true, Rectf{ data->posx, data->posy + data->radiusy * 1.5f, data->radiusx * .3f, data->radiusy * .3f } };
-        //(data + 1)->standing_on = data;
         (data + 1)->move_speed = .1f;
         return 2;
     }
@@ -267,8 +270,8 @@ Rectf screen_to_world(Rectf r, Camera camera) {
 }
 
 void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera) {
-    if (!mouse->right.down) return;
-    u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count);
+    if (!mouse->right.presses) return;
+    u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count, ENTITY_STATIC | ENTITY_MONSTER);
     if (overlap_index < obstacles_count) {
         obstacles[overlap_index].type = ENTITY_NONE;
     }
@@ -338,10 +341,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         // Load save file
         // This is stupid since we need to load into last frame, so last frames objects are put into this frames arena.
         Arena temp_storage = *persistent_state;
-        last_frame->objects = (Entity*)arena_current(frame_state);
         u32 file_size = game_info->platform_read_entire_file(temp_storage, "test.txt");
-        last_frame->objects_count = parse_savefile((char*)arena_current(temp_storage), file_size, last_frame->objects);
-        frame_state->current += sizeof(last_frame->objects[0]) * last_frame->objects_count;
+        last_frame->entities_count = parse_savefile((char*)arena_current(temp_storage), file_size, last_frame->entities);
     }
     Player* player = &this_frame->player;
     *player = last_frame->player;
@@ -354,23 +355,21 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         game_info->display_text[count] = game_info->input_text[i];
     }
 
-
-    this_frame->objects = (Entity*)(frame_state->data + frame_state->current);
-    this_frame->objects_count = update_objects(last_frame->objects, last_frame->objects_count, this_frame->objects);
+    this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities);
     
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
-    player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 0, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
-    player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 1, this_frame->objects, this_frame->objects_count, &this_frame->collision_info);
+    player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 0, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
+    player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 1, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
 
-    this_frame->objects_count += draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame->objects + this_frame->objects_count);
-    erase_obstacle(this_frame->mouse, this_frame->objects, this_frame->objects_count, this_frame->camera);
+    this_frame->entities_count += draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame->entities + this_frame->entities_count);
+    erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera);
 
 
     if (this_frame->input[INPUT_EDITOR_SAVE].presses) {
         u32 persistent_reset = persistent_state->current;
         u32 total_length = 0;
-        for (int i = 0; i < this_frame->objects_count; ++i) {
-            Entity object = this_frame->objects[i];
+        for (int i = 0; i < this_frame->entities_count; ++i) {
+            Entity object = this_frame->entities[i];
             if (!object.type) continue;
             u32 serialized_length = serialize_entity(object, *persistent_state);
             total_length += serialized_length;
@@ -380,5 +379,6 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         game_info->platform_write_entire_file("test.txt", (const char*)arena_current(*persistent_state), total_length);
     }
 
+    assert(this_frame->entities_count < ENTITIES_CAPACITY);
     return true;
 }

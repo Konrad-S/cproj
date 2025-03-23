@@ -1,10 +1,21 @@
 do next:
-        
+    new entity creation overwrites NONE entities
 
-    monster
+    ballistic trajectory
+        throwing things
 
-    savefile
-        move load to game layer
+    player attack
+        separate hitbox that exists for certain time
+        launch monsters using ballistic
+
+
+    Health
+        player and monster
+        display
+        handle player death?
+
+    Levels
+
 
     build in sublime
 
