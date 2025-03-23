@@ -21,6 +21,11 @@ typedef double   f64;
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+
+#define KILOBYTE 1024
+#define PERSISTENT_ARENA_SIZE (1*KILOBYTE*KILOBYTE)
+#define FRAME_ARENA_SIZE ((KILOBYTE*KILOBYTE)/2)
+
 struct Arena {
     u8* data;
     u64 current;
@@ -108,6 +113,7 @@ struct Mouse {
 
 struct Collision_Info {
     Direction_Flag sides_touched;
+    u32 other_index;
 };
 
 struct Drawing_Obstacle {
@@ -131,6 +137,7 @@ struct Frame_Info {
     #define ENTITIES_CAPACITY 2000
     Entity  entities[ENTITIES_CAPACITY];
     u32     entities_count;
+    s32     frame_pointer_delta;
 };
 
 typedef u32  (*Platform_Read_Entire_File)(Arena, const char*);

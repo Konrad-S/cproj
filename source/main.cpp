@@ -408,9 +408,6 @@ int main(void) {
     //
     // Create memory arenas
     Arena persistent;
-    #define KILOBYTE 1024
-    const int PERSISTENT_ARENA_SIZE = 1*KILOBYTE*KILOBYTE;
-    const int FRAME_ARENA_SIZE = (KILOBYTE*KILOBYTE)/2;
     persistent.data = (u8*)malloc(PERSISTENT_ARENA_SIZE + FRAME_ARENA_SIZE*2); // 2 MB
     persistent.capacity = PERSISTENT_ARENA_SIZE;
     persistent.current = 0;
@@ -484,6 +481,7 @@ int main(void) {
     frame_arena_0.current += sizeof(Frame_Info);
     frame_arena_1.current += sizeof(Frame_Info);
     Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
+    this_frame->frame_pointer_delta = FRAME_ARENA_SIZE;
     // Game_Info is stored at start of the persistent arena.
     Game_Info* game_info = (Game_Info*)arena_append(&persistent, sizeof(Game_Info));
     game_info->platform_read_entire_file = read_entire_file;

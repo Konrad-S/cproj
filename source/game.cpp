@@ -112,20 +112,20 @@ u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count, Entity_Typ
     return others_count;
 }
 
-u32 first_overlap_index_against_index(u32 rect_index, Entity* others, u32 others_count, Entity_Type_Flag types_to_check) {
-    assert(rect_index < others_count);
-    for (int i = 0; i < others_count; ++i) {
-        if (i == rect_index) continue;
-        Entity other = others[i];
-        if (!(other.type & types_to_check)) continue;
-        Rectf result = rectf_overlap(others[rect_index].rect, other.rect);
-        if (result.radiusx > 0 && result.radiusy > 0)
-        {
-            return i;
-        }
-    }
-    return others_count;
-}
+// u32 first_overlap_index_against_index(u32 rect_index, Entity* others, u32 others_count, Entity_Type_Flag types_to_check) {
+//     assert(rect_index < others_count);
+//     for (int i = 0; i < others_count; ++i) {
+//         if (i == rect_index) continue;
+//         Entity other = others[i];
+//         if (!(other.type & types_to_check)) continue;
+//         Rectf result = rectf_overlap(others[rect_index].rect, other.rect);
+//         if (result.radiusx > 0 && result.radiusy > 0)
+//         {
+//             return i;
+//         }
+//     }
+//     return others_count;
+// }
 
 u32 get_overlaps(Rectf rect, Rectf* others, u32 others_count, Rectf* results) {
     u32 results_count = 0;
@@ -166,6 +166,7 @@ Rectf try_move_axis(Rectf player, Vec2f move, u8 axis_offset, Entity* others, u3
                 most_extreme_edge = edge;
                 if (sign > 0) info->sides_touched |= (DIR_RIGHT - axis_offset);
                 else          info->sides_touched |= (DIR_LEFT - axis_offset);
+                info->other_index = i;
             }
         }
         player.pos.a[axis_offset] = most_extreme_edge - (player.radius.a[axis_offset] + COLLISION_EPSILON) * sign;
@@ -198,12 +199,11 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                 object->standing_on = object - (last_object - last_object->standing_on);
             } else {
                 //fall until colliding
-                u32 overlap_index = first_overlap_index_against_index(i, last_objects, last_objects_count, ENTITY_STATIC);
-                if (overlap_index < last_objects_count) {
-                    Entity* other = last_objects + overlap_index;
-                    object->posy = other->posy + other->radiusy + object->radiusy;
+                Collision_Info collision;
+                object->rect = try_move_axis(object->rect, Vec2f{ 0, -.1f}, 1, last_objects, last_objects_count, &collision);
+                if (collision.sides_touched & DIR_DOWN) {
                     object->facing = -1;
-                    object->standing_on = result + overlap_index;
+                    object->standing_on = result + collision.other_index;
                 } else {
                     object->standing_on = NULL;
                     object->posy -= .1f;
