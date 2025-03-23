@@ -43,7 +43,7 @@ struct Vec2f {
 };
 
 #define POS_F32    union { Vec2f pos;    struct { f32 posx;    f32 posy;    }; }
-#define OFFSET_F32    union { Vec2f offset;    struct { f32 offsetx;    f32 offsety;    }; }
+#define OFFSET_F32 union { Vec2f offset; struct { f32 offsetx; f32 offsety; }; }
 #define RADIUS_F32 union { Vec2f radius; struct { f32 radiusx; f32 radiusy; }; }
 
 #define ANONYMOUS
@@ -56,12 +56,13 @@ struct Pos_Offset {
 };
 
 enum Entity_Type {
-    ENTITY_NONE    = 0,
-    ENTITY_PLAYER  = 1,
-    ENTITY_STATIC  = 2,
-    ENTITY_MONSTER = 4,
+    ENTITY_NONE       = 0,
+    ENTITY_PLAYER     = 1,
+    ENTITY_STATIC     = 2,
+    ENTITY_MONSTER    = 4,
+    ENTITY_PROJECTILE = 8,
 };
-typedef u16 Entity_Type_Flag;
+typedef u32 Entity_Type_Flag;
 
 struct Entity {
     Entity_Type type;
@@ -101,6 +102,7 @@ enum InputAction {
     INPUT_CAM_DOWN,
     INPUT_CAM_LEFT,
     INPUT_EDITOR_SAVE,
+    INPUT_THROW,
     INPUT_ENUM_COUNT,
 };
 #define INPUT_SIZE (INPUT_ENUM_COUNT * sizeof(Input))

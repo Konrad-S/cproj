@@ -1,5 +1,7 @@
 do next:
-    new entity creation overwrites NONE entities
+    monster use velocity?
+        at least when falling
+            yeah, it makes sense for velocity to be used for ballistic trajectories and grounded just moves by move speed
 
     ballistic trajectory
         throwing things
