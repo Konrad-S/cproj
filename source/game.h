@@ -41,6 +41,7 @@ struct Vec2f {
         f32 a[2];
     };
 };
+
 #define POS_F32    union { Vec2f pos;    struct { f32 posx;    f32 posy;    }; }
 #define OFFSET_F32    union { Vec2f offset;    struct { f32 offsetx;    f32 offsety;    }; }
 #define RADIUS_F32 union { Vec2f radius; struct { f32 radiusx; f32 radiusy; }; }
@@ -117,8 +118,8 @@ struct Mouse {
 };
 
 struct Collision_Info {
-    Direction_Flag sides_touched;
-    u32 other_index;
+    Direction_Flag sides_touched = 0;
+    u32 other_index = 0;
 };
 
 struct Drawing_Obstacle {
@@ -139,7 +140,7 @@ struct Frame_Info {
     Rectf*  collisions;
     u32     collisions_count;
     Collision_Info collision_info;
-    #define ENTITIES_CAPACITY 2000
+#define ENTITIES_CAPACITY 2000
     Entity  entities[ENTITIES_CAPACITY];
     u32     entities_count;
     s32     frame_pointer_delta;
@@ -159,8 +160,8 @@ struct Game_Info {
     char*   input_text;
     u8      input_text_count = 0;
     Drawing_Obstacle drawing;
-    // Stuff in Frame_Info that we always copy over without modification
-    // and we don't care what the previous frames value was, should go here instead.
+    u16     empty_entities[ENTITIES_CAPACITY];
+    u16     empty_entities_count = 0;
 };
 
 //Rectf get_updated_player(Rectf last_player, Input input);

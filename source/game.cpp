@@ -174,6 +174,17 @@ Rectf try_move_axis(Rectf player, Vec2f move, Axis axis_offset, Entity* others, 
     return player;
 }
 
+Entity* create_entity(Game_Info* game_info, Frame_Info* frame) {
+    u16 found_index;
+    if (game_info->empty_entities_count) {
+        found_index = game_info->empty_entities[--game_info->empty_entities_count];
+    } else {
+        assert(frame->entities_count < ENTITIES_CAPACITY);
+        found_index = frame->entities_count++;
+    }
+    return frame->entities + found_index;
+}
+
 const f32 CULL_OBJECT_IF_SMALLER = .2;
 u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result) {
     u32 added_count = 0;
@@ -238,27 +249,29 @@ Rectf move_rect(Rectf r, Vec2f dist) {
     return Rectf{ r.posx + dist.x, r.posy + dist.y, r.radius };
 }
 
-u32 draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Entity* data) {
+void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame_Info* frame, Game_Info* game_info) {
     if (mouse->right.presses) {
         drawing.active = false;
-        return 0;
+        return;
     }
-    if (!mouse->left.presses) return 0;
+    if (!mouse->left.presses) return;
     if (!drawing.active) {
         drawing.active = true;
         drawing.pos = mouse->pos;
-        return 0;
+        return;
     } else {
         Rectf screen_rect = points_to_rect(drawing.pos, mouse->pos);
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
-        *data = Entity{ ENTITY_STATIC, true, move_rect(scaled_rect, camera.pos)};
+        Entity* obstacle = create_entity(game_info, frame);
+        *obstacle = Entity{ ENTITY_STATIC, true, move_rect(scaled_rect, camera.pos)};
         drawing.active = false;
 
-        *(data + 1) = Entity{ ENTITY_MONSTER, true, Rectf{ data->posx, data->posy + data->radiusy * 1.5f, data->radiusx * .3f, data->radiusy * .3f } };
-        (data + 1)->move_speed = .1f;
-        return 2;
+        Entity* monster = create_entity(game_info, frame);
+        *monster = Entity{ ENTITY_MONSTER, true, Rectf{ obstacle->posx, obstacle->posy + obstacle->radiusy * 1.5f, obstacle->radiusx * .3f, obstacle->radiusy * .3f } };
+        monster->move_speed = .1f;
+        return;
     }
-    return 0;
+    return;
 }
 
 Vec2f screen_to_world(Vec2f v, Camera camera) {
@@ -269,12 +282,14 @@ Rectf screen_to_world(Rectf r, Camera camera) {
     return Rectf { screen_to_world(r.pos, camera), r.radiusx * camera.scale, r.radiusy * camera.scale };
 }
 
-void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera) {
-    if (!mouse->right.presses) return;
+u16 erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera, u16* empty_slots, u16 empty_slots_count) {
+    if (!mouse->right.presses) return empty_slots_count;
     u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count, ENTITY_STATIC | ENTITY_MONSTER);
     if (overlap_index < obstacles_count) {
         obstacles[overlap_index].type = ENTITY_NONE;
+        empty_slots[empty_slots_count++] = overlap_index;
     }
+    return empty_slots_count;
 }
 
 Camera update_camera(Camera camera, Input* input) {
@@ -361,8 +376,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     player->rect = try_move_axis(player->rect, player_delta, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
     player->rect = try_move_axis(player->rect, player_delta, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
 
-    this_frame->entities_count += draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame->entities + this_frame->entities_count);
-    erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera);
+    draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame, game_info);
+    game_info->empty_entities_count = erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera, game_info->empty_entities, game_info->empty_entities_count);
 
 
     if (this_frame->input[INPUT_EDITOR_SAVE].presses) {
