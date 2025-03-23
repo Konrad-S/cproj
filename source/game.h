@@ -77,6 +77,11 @@ struct Entity {
 };
 typedef Entity Player;
 
+enum Axis {
+    AXIS_X = 0,
+    AXIS_Y = 1,
+};
+
 enum Direction {
     DIR_UP    = 1,
     DIR_RIGHT = 2,

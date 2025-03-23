@@ -147,7 +147,7 @@ bool check_collided(Rectf a, Rectf b) {
 
 const f32 PLAYER_MOVE_SPEED = .1f;
 const f32 COLLISION_EPSILON = .001f;
-Rectf try_move_axis(Rectf player, Vec2f move, u8 axis_offset, Entity* others, u32 others_count, Collision_Info* info) {
+Rectf try_move_axis(Rectf player, Vec2f move, Axis axis_offset, Entity* others, u32 others_count, Collision_Info* info) {
     f32 move_axis = move.a[axis_offset];
     if (move_axis != 0) {
         f32 sign;
@@ -200,7 +200,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
             } else {
                 //fall until colliding
                 Collision_Info collision;
-                object->rect = try_move_axis(object->rect, Vec2f{ 0, -.1f}, 1, last_objects, last_objects_count, &collision);
+                object->rect = try_move_axis(object->rect, Vec2f{ 0, -.1f}, AXIS_Y, last_objects, last_objects_count, &collision);
                 if (collision.sides_touched & DIR_DOWN) {
                     object->facing = -1;
                     object->standing_on = result + collision.other_index;
@@ -358,8 +358,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities);
     
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
-    player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 0, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
-    player->rect = try_move_axis(player->rect, player_delta, /*axis_offset:*/ 1, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
+    player->rect = try_move_axis(player->rect, player_delta, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
+    player->rect = try_move_axis(player->rect, player_delta, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
 
     this_frame->entities_count += draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame->entities + this_frame->entities_count);
     erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera);
