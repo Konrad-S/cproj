@@ -147,8 +147,7 @@ bool check_collided(Rectf a, Rectf b) {
 
 const f32 PLAYER_MOVE_SPEED = .1f;
 const f32 COLLISION_EPSILON = .001f;
-Rectf try_move_axis(Rectf player, Vec2f move, Axis axis_offset, Entity* others, u32 others_count, Collision_Info* info) {
-    f32 move_axis = move.a[axis_offset];
+Rectf try_move_axis(Rectf player, f32 move_axis, Axis axis_offset, Entity* others, u32 others_count, Collision_Info* info) {
     if (move_axis != 0) {
         f32 sign;
         if (move_axis > 0) {
@@ -164,8 +163,8 @@ Rectf try_move_axis(Rectf player, Vec2f move, Axis axis_offset, Entity* others, 
             f32 edge = other.pos.a[axis_offset] - other.radius.a[axis_offset] * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
-                if (sign > 0) info->sides_touched |= (DIR_RIGHT - axis_offset);
-                else          info->sides_touched |= (DIR_LEFT - axis_offset);
+                if (sign > 0) info->sides_touched |= (DIR_RIGHT >> axis_offset);
+                else          info->sides_touched |= (DIR_LEFT  >> axis_offset);
                 info->other_index = i;
             }
         }
@@ -191,7 +190,7 @@ void throw_projectile(Rectf player, Game_Info* game, Frame_Info* frame) {
     proj->type = ENTITY_PROJECTILE;
     proj->rect = { player.pos, 1, 1 };
     proj->is_an_existing_entity = true;
-    proj->velocity = { .3, .10 };
+    proj->velocity = { .3, .30 };
 }
 
 const f32 CULL_OBJECT_IF_SMALLER = .2;
@@ -223,7 +222,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                 } else {
                     //fall until colliding
                     Collision_Info collision;
-                    object->rect = try_move_axis(object->rect, Vec2f{ 0, -.1f}, AXIS_Y, last_objects, last_objects_count, &collision);
+                    object->rect = try_move_axis(object->rect, -.1f, AXIS_Y, last_objects, last_objects_count, &collision);
                     if (collision.sides_touched & DIR_DOWN) {
                         object->facing = -1;
                         object->standing_on = result + collision.other_index;
@@ -235,10 +234,25 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                 break;
             case ENTITY_PROJECTILE:
                 {
-                    Collision_Info collision;
-                    object->rect = try_move_axis(object->rect, object->velocity, AXIS_X, last_objects, last_objects_count, &collision);
-                    object->rect = try_move_axis(object->rect, object->velocity, AXIS_Y, last_objects, last_objects_count, &collision);
-                    if (collision.sides_touched & (DIR_UP | DIR_DOWN)) object->velocity.y = 0;
+                    object->velocity.y -= GRAVITY;
+                    Collision_Info collision = {};
+                    object->rect = try_move_axis(object->rect, object->velocity.y, AXIS_Y, last_objects, last_objects_count, &collision);
+                    object->rect = try_move_axis(object->rect, object->velocity.x, AXIS_X, last_objects, last_objects_count, &collision);
+                    if (collision.sides_touched & (DIR_UP | DIR_DOWN)) {
+                        object->velocity.y = 0;
+                        if (object->velocity.x) {
+                            #define STOP_VELOCITY .01f
+                            if (fabs(object->velocity.x) < STOP_VELOCITY) {
+                                object->velocity.x = 0;
+                            } else {
+                                f32 vel = object->velocity.x;
+                                object->velocity.x -= SIGN(vel) * ((fabs(vel) + .3f) / 200);
+                            }
+                        }
+                    }
+                    if (collision.sides_touched & (DIR_RIGHT | DIR_LEFT)) {
+                        object->velocity.x *= -1;
+                    }
                 }
             case ENTITY_STATIC:
                 break;
@@ -302,7 +316,7 @@ Rectf screen_to_world(Rectf r, Camera camera) {
 
 u16 erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera, u16* empty_slots, u16 empty_slots_count) {
     if (!mouse->right.presses) return empty_slots_count;
-    u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count, ENTITY_STATIC | ENTITY_MONSTER);
+    u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count, ENTITY_STATIC | ENTITY_MONSTER | ENTITY_PROJECTILE);
     if (overlap_index < obstacles_count) {
         obstacles[overlap_index].type = ENTITY_NONE;
         empty_slots[empty_slots_count++] = overlap_index;
@@ -394,8 +408,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     }
     
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
-    player->rect = try_move_axis(player->rect, player_delta, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
-    player->rect = try_move_axis(player->rect, player_delta, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
+    player->rect = try_move_axis(player->rect, player_delta.x, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
+    player->rect = try_move_axis(player->rect, player_delta.y, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
 
     draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame, game_info);
     game_info->empty_entities_count = erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera, game_info->empty_entities, game_info->empty_entities_count);

@@ -21,6 +21,7 @@ typedef double   f64;
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define SIGN(x) (((x) > 0) - ((x) < 0))
 
 #define KILOBYTE 1024
 #define PERSISTENT_ARENA_SIZE (1*KILOBYTE*KILOBYTE)
@@ -86,7 +87,7 @@ enum Axis {
 
 enum Direction {
     DIR_UP    = 1,
-    DIR_RIGHT = 2,
+    DIR_RIGHT = 2,  
     DIR_DOWN  = 4,
     DIR_LEFT  = 8,
 };
