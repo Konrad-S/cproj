@@ -193,6 +193,28 @@ void throw_projectile(Rectf player, Game_Info* game, Frame_Info* frame) {
     proj->velocity = { .3, .30 };
 }
 
+void update_launched(Entity* object, Entity* others, u32 others_count) {
+    object->velocity.y -= GRAVITY;
+    Collision_Info collision = {};
+    object->rect = try_move_axis(object->rect, object->velocity.y, AXIS_Y, others, others_count, &collision);
+    object->rect = try_move_axis(object->rect, object->velocity.x, AXIS_X, others, others_count, &collision);
+    if (collision.sides_touched & (DIR_UP | DIR_DOWN)) {
+        object->velocity.y = 0;
+        if (object->velocity.x) {
+            #define STOP_VELOCITY .01f
+            if (fabs(object->velocity.x) < STOP_VELOCITY) {
+                object->velocity.x = 0;
+            } else {
+                f32 vel = object->velocity.x;
+                object->velocity.x -= SIGN(vel) * ((fabs(vel) + .3f) / 200);
+            }
+        }
+    }
+    if (collision.sides_touched & (DIR_RIGHT | DIR_LEFT)) {
+        object->velocity.x *= -1;
+    }
+}
+
 const f32 CULL_OBJECT_IF_SMALLER = .2;
 u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result) {
     u32 added_count = 0;
@@ -234,24 +256,12 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                 break;
             case ENTITY_PROJECTILE:
                 {
-                    object->velocity.y -= GRAVITY;
-                    Collision_Info collision = {};
-                    object->rect = try_move_axis(object->rect, object->velocity.y, AXIS_Y, last_objects, last_objects_count, &collision);
-                    object->rect = try_move_axis(object->rect, object->velocity.x, AXIS_X, last_objects, last_objects_count, &collision);
-                    if (collision.sides_touched & (DIR_UP | DIR_DOWN)) {
+                    #define COUNT_AS_LAUNCHED_VELOCITY .2f
+                    if (!object->grounded || object->velocity.x > COUNT_AS_LAUNCHED_VELOCITY) {
+                        update_launched(object, last_objects, last_objects_count);
+                    } else {
+                        object->velocity.x = 0;
                         object->velocity.y = 0;
-                        if (object->velocity.x) {
-                            #define STOP_VELOCITY .01f
-                            if (fabs(object->velocity.x) < STOP_VELOCITY) {
-                                object->velocity.x = 0;
-                            } else {
-                                f32 vel = object->velocity.x;
-                                object->velocity.x -= SIGN(vel) * ((fabs(vel) + .3f) / 200);
-                            }
-                        }
-                    }
-                    if (collision.sides_touched & (DIR_RIGHT | DIR_LEFT)) {
-                        object->velocity.x *= -1;
                     }
                 }
             case ENTITY_STATIC:

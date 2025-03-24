@@ -87,7 +87,7 @@ enum Axis {
 
 enum Direction {
     DIR_UP    = 1,
-    DIR_RIGHT = 2,  
+    DIR_RIGHT = 2,
     DIR_DOWN  = 4,
     DIR_LEFT  = 8,
 };
