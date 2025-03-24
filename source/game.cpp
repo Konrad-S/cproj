@@ -188,7 +188,7 @@ void throw_projectile(Rectf player, Game_Info* game, Frame_Info* frame) {
     Entity* proj = create_entity(game, frame);
     *proj = {};
     proj->type = ENTITY_PROJECTILE;
-    proj->rect = { player.pos, 1, 1 };
+    proj->rect = { player.pos, .3f, .3f };
     proj->is_an_existing_entity = true;
     proj->velocity = { .3, .30 };
 }
@@ -210,60 +210,64 @@ void update_launched(Entity* object, Entity* others, u32 others_count) {
             }
         }
     }
+    if (collision.sides_touched & (DIR_DOWN)) {
+        object->grounded = true;
+        object->standing_on = others + collision.other_index;
+        object->facing = 1;
+    }
     if (collision.sides_touched & (DIR_RIGHT | DIR_LEFT)) {
         object->velocity.x *= -1;
     }
 }
 
+void update_grounded(Entity* object) {
+    object->velocity.x = 0;
+    object->velocity.y = 0;
+    switch (object->type) {
+        case ENTITY_MONSTER:
+            {
+                Entity* other = object->standing_on;
+                bool outside_right = object->posx + object->radiusx > other->posx + other->radiusx;
+                bool outside_left  = object->posx - object->radiusx < other->posx - other->radiusx;
+                if (outside_right && outside_left) {
+                    object->facing = 0;
+                } else if (outside_right) {
+                    object->facing = -1;
+                } else if (outside_left) {
+                    object->facing = 1;
+                    object->velocity = { .1, .5 };
+                    object->standing_on = NULL;
+                }
+                object->posx += object->move_speed * object->facing;
+            }
+            break;
+        case ENTITY_PROJECTILE:
+            break;
+    }
+}
+
 const f32 CULL_OBJECT_IF_SMALLER = .2;
 u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result) {
-    u32 added_count = 0;
     for (int i = 0; i < last_objects_count; ++i) {
-        Entity* object = result + added_count++;
+        Entity* object = result + i;
         *object = last_objects[i];
         if (object->radiusx < CULL_OBJECT_IF_SMALLER || object->radiusy < CULL_OBJECT_IF_SMALLER) {
             object->type = ENTITY_NONE;
         }
         switch (object->type) {
             case ENTITY_MONSTER:
-                if (object->standing_on && object->standing_on->type) {
-                    Entity* other = object->standing_on;
-                    bool outside_right = object->posx + object->radiusx > other->posx + other->radiusx;
-                    bool outside_left  = object->posx - object->radiusx < other->posx - other->radiusx;
-                    if (outside_right && outside_left) {
-                        object->facing = 0;
-                    } else if (outside_right) {
-                        object->facing = -1;
-                    } else if (outside_left) {
-                        object->facing = 1;
-                    }
-                    object->posx += object->move_speed * object->facing;
-                    // Point to this frames objects instead of last. The pointers relative position is the same.
-                    Entity* last_object = last_objects + i;
-                    object->standing_on = object - (last_object - last_object->standing_on);
-                } else {
-                    //fall until colliding
-                    Collision_Info collision;
-                    object->rect = try_move_axis(object->rect, -.1f, AXIS_Y, last_objects, last_objects_count, &collision);
-                    if (collision.sides_touched & DIR_DOWN) {
-                        object->facing = -1;
-                        object->standing_on = result + collision.other_index;
-                    } else {
-                        object->standing_on = NULL;
-                        object->posy -= .1f;
-                    }
-                }
-                break;
             case ENTITY_PROJECTILE:
                 {
                     #define COUNT_AS_LAUNCHED_VELOCITY .2f
-                    if (!object->grounded || object->velocity.x > COUNT_AS_LAUNCHED_VELOCITY) {
-                        update_launched(object, last_objects, last_objects_count);
+                    if (object->standing_on && object->standing_on->type &&
+                        fabs(object->velocity.x) < COUNT_AS_LAUNCHED_VELOCITY)
+                    {
+                        update_grounded(object);
                     } else {
-                        object->velocity.x = 0;
-                        object->velocity.y = 0;
+                        update_launched(object, last_objects, last_objects_count);
                     }
                 }
+                break;
             case ENTITY_STATIC:
                 break;
             case ENTITY_NONE:
@@ -271,7 +275,18 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                 object->is_an_existing_entity = false;
         }
     }
-    return added_count;
+    s64 frames_pointer_offset = last_objects - result;
+    for (int i = 0; i < last_objects_count; ++i) {
+        Entity* object = result + i;
+        if (!object->standing_on) continue;
+        if (!object->standing_on->type) {
+            object->standing_on = NULL;
+            continue;
+        }
+        // Point to this frames objects instead of last. The pointers relative position is the same.
+        object->standing_on -= frames_pointer_offset;
+    }
+    return last_objects_count;
 }
 
 Rectf points_to_rect(Vec2f a, Vec2f b) {
