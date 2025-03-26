@@ -4,3 +4,5 @@
 *.pdb
 *.rdbg
 /local
+.vs
+*.sln

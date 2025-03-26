@@ -3,3 +3,16 @@ arena allocation
     i should have one persistent and one transient, and maybe others
         transient is wiped (current pos set to 0) each frame
         "double-buffer" frame arena, alternatve between two arenas, to have access to last frame
+
+    
+
+optimize collision detection?
+    two things
+        try move
+        check collisions
+    'try move' only needs checks against rigid a limited set of entities
+
+    check collisions creates a result, which entities then look at to determine their collisions
+    this way we only check each pair of entities once per frame
+
+    if we do this, the player entity should be part of the list of entities
