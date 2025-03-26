@@ -62,6 +62,7 @@ enum Entity_Type {
     ENTITY_STATIC     = 2,
     ENTITY_MONSTER    = 4,
     ENTITY_PROJECTILE = 8,
+    ENTITY_PLAYER_ATTACK = 16,
 };
 typedef u32 Entity_Type_Flag;
 

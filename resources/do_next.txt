@@ -1,17 +1,4 @@
 do next:
-    fix bug
-        breakpoint when object->facing = 0
-            standing on is not a correct object
-                where did we write to this location?
-                    use visual studio debugger to set data breakpoint?
-
-    monster use velocity?
-        at least when falling
-            yeah, it makes sense for velocity to be used for ballistic trajectories and grounded just moves by move speed
-
-    ballistic trajectory
-        throwing things
-
     player attack
         separate hitbox that exists for certain time
         launch monsters using ballistic

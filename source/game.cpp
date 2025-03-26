@@ -25,6 +25,10 @@ u32 arena_remaining(Arena arena) {
     return arena.capacity - arena.current;
 }
 
+//
+// Game
+//
+
 u32 serialize_entity(Entity entity, Arena arena) {
     Rectf rect = entity.rect;
     u32 chars_written = snprintf((char* const)arena_current(arena), arena_remaining(arena), "Entity: type=%d posx=%g posy=%g radiusx=%g radiusy=%g move_speed=%g facing=%d\n", entity.type, rect.posx, rect.posy, rect.radiusx, rect.radiusy, entity.move_speed, entity.facing);
@@ -47,10 +51,6 @@ Vec2f move_camera(Vec2f last_pos, Input* input) {
     }
     return pos;
 }
-
-//
-// Game
-//
 
 const f32 JUMP_VELOCITY = .2f;
 const f32 GRAVITY = .005f;
@@ -182,6 +182,14 @@ Entity* create_entity(Game_Info* game_info, Frame_Info* frame) {
         found_index = frame->entities_count++;
     }
     return frame->entities + found_index;
+}
+
+void attack(Entity* player, Game_Info* game, Frame_Info* frame) {
+    Entity* attack = create_entity(game, frame);
+    *attack = {};
+    attack->type = ENTITY_PLAYER_ATTACK;
+    attack->rect = { player->posx + 1.8f, player->posy, .8f, .4f };
+    attack->is_an_existing_entity = true;
 }
 
 void throw_projectile(Rectf player, Game_Info* game, Frame_Info* frame) {
@@ -429,7 +437,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
 
     this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities);
     if (this_frame->input[INPUT_THROW].presses) {
-        throw_projectile(player->rect, game_info, this_frame);
+        //throw_projectile(player->rect, game_info, this_frame);
+        attack(player, game_info, this_frame);
     }
     
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
