@@ -275,7 +275,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
                 object->is_an_existing_entity = false;
         }
     }
-    s64 frames_pointer_offset = last_objects - result;
+    s64 frames_pointer_offset = (u8*)last_objects - (u8*)result;
     for (int i = 0; i < last_objects_count; ++i) {
         Entity* object = result + i;
         if (!object->standing_on) continue;
@@ -284,7 +284,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
             continue;
         }
         // Point to this frames objects instead of last. The pointers relative position is the same.
-        object->standing_on -= frames_pointer_offset;
+        object->standing_on = (Entity*)((u8*)object->standing_on - frames_pointer_offset);
     }
     return last_objects_count;
 }
