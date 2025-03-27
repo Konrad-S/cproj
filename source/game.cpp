@@ -420,7 +420,12 @@ void parse_savefile(char* text_start, u32 text_size, Game_Info* game, Frame_Info
 
 #define ATTACK_DURATION 20
 void update_player(Player* player, Player* last_player) {
-    if (last_player->attack) {
+    // Point to this frames entities instead of last. The pointers relative position is the same.
+    s64 frames_pointer_offset = (u8*)last_player - (u8*)player;
+    if (player->e)      player->e      = (Entity*)((u8*)player->e      - frames_pointer_offset);
+    if (player->attack) player->attack = (Entity*)((u8*)player->attack - frames_pointer_offset);
+
+    if (player->attack) {
         u32 frames_active = last_player->attack_frames;
         if (frames_active > ATTACK_DURATION) {
             player->attack->type = ENTITY_NONE;
@@ -430,10 +435,6 @@ void update_player(Player* player, Player* last_player) {
             player->attack_frames = ++frames_active;
         }
     }
-    // Point to this frames entities instead of last. The pointers relative position is the same.
-    s64 frames_pointer_offset = (u8*)last_player - (u8*)player;
-    if (last_player->e)      player->e      = (Entity*)((u8*)last_player->e      - frames_pointer_offset);
-    if (last_player->attack) player->attack = (Entity*)((u8*)last_player->attack - frames_pointer_offset);
 }
 
 bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
