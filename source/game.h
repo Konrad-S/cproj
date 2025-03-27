@@ -68,7 +68,6 @@ typedef u32 Entity_Type_Flag;
 
 struct Entity {
     Entity_Type type;
-    bool is_an_existing_entity;
     union {
         Rectf rect;
         RECTF_DEFINITION(ANONYMOUS);
@@ -83,7 +82,7 @@ struct Entity {
 struct Player {
     Entity* e;
     Entity* attack;
-    u32     attack_time;
+    u32     attack_frames;
 };
 
 enum Axis {
