@@ -3,6 +3,10 @@ do next:
         separate hitbox that exists for certain time
         launch monsters using ballistic
 
+    delta time
+
+    operator overloading
+        multiply vec2
 
     Health
         player and monster

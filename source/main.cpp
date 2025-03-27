@@ -336,7 +336,7 @@ int main(void) {
     glfwSetKeyCallback(window, key_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSwapInterval(1);
+    //glfwSwapInterval(1);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -499,6 +499,11 @@ int main(void) {
 
     bool even_frame = false;
     bool game_wants_to_keep_running = true;
+    f32 last_time = glfwGetTime() * 10;
+    {
+        u32 result = timeBeginPeriod(1);
+        assert(result == TIMERR_NOERROR);
+    }
     while (!glfwWindowShouldClose(window) && game_wants_to_keep_running) {
         //
         // Get game DLL and game update procedure
@@ -522,6 +527,15 @@ int main(void) {
         clear_arena(frame_arena);
         frame_arena->current += sizeof(Frame_Info);
         this_frame = (Frame_Info*)frame_arena->data;
+#define MIN_FRAME_TIME .0016f
+
+        f32 current_time = glfwGetTime() - last_time;
+        while ((current_time - last_time) < MIN_FRAME_TIME) {
+            Sleep(1);
+            current_time = glfwGetTime();
+        }
+        last_time = current_time;
+
 
         transfer_input(this_frame->input);
 
@@ -583,6 +597,7 @@ int main(void) {
         glfwPollEvents();
         even_frame = !even_frame;
     }
+    timeEndPeriod(1);
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
