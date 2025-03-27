@@ -79,7 +79,12 @@ struct Entity {
     Entity* standing_on;
     Vec2f   velocity;
 };
-typedef Entity Player;
+
+struct Player {
+    Entity* e;
+    Entity* attack;
+    u32     attack_time;
+};
 
 enum Axis {
     AXIS_X = 0,

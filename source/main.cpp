@@ -561,8 +561,8 @@ int main(void) {
             glUniform4f(color_location, 0, 1, 0, 1);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
-        glUniform2f(offset_location, this_frame->player.rect.posx, this_frame->player.rect.posy);
-        glUniform2f(scale_location, this_frame->player.rect.radiusx, this_frame->player.rect.radiusy);
+        glUniform2f(offset_location, this_frame->player.e->posx, this_frame->player.e->rect.posy);
+        glUniform2f(scale_location, this_frame->player.e->radiusx, this_frame->player.e->radiusy);
         glUniform4f(color_location, 1, 1, 1, 1);
         glDrawArrays(GL_TRIANGLES, 0, 6);
         for (int i = 0; i < this_frame->collisions_count; i++) {

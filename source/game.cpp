@@ -56,6 +56,7 @@ const f32 JUMP_VELOCITY = .2f;
 const f32 GRAVITY = .005f;
 const f32 TERMINAL_VELOCITY = 1.5f;
 Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_info) {
+    Entity* entity = player->e;
     Vec2f pos = {};
     if (input[INPUT_RIGHT].down) {
         pos.x += .1f;
@@ -63,18 +64,18 @@ Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_inf
     if (input[INPUT_LEFT].down) {
         pos.x -= .1f;
     }
-    player->grounded = last_info.sides_touched & DIR_DOWN;
+    entity->grounded = last_info.sides_touched & DIR_DOWN;
 
-    if (player->grounded) {
-        player->velocity.y = 0;
+    if (entity->grounded) {
+        entity->velocity.y = 0;
         if (input[INPUT_UP].down) {
-            player->velocity.y = JUMP_VELOCITY;
+            entity->velocity.y = JUMP_VELOCITY;
         }
     }
 
-    player->velocity.y -= GRAVITY;
-    if (player->velocity.y < -TERMINAL_VELOCITY) player->velocity.y = -TERMINAL_VELOCITY;
-    pos.y += player->velocity.y;
+    entity->velocity.y -= GRAVITY;
+    if (entity->velocity.y < -TERMINAL_VELOCITY) entity->velocity.y = -TERMINAL_VELOCITY;
+    pos.y += entity->velocity.y;
     
     return pos;
 }
@@ -181,14 +182,16 @@ Entity* create_entity(Game_Info* game_info, Frame_Info* frame) {
         assert(frame->entities_count < ENTITIES_CAPACITY);
         found_index = frame->entities_count++;
     }
-    return frame->entities + found_index;
+    Entity* result = frame->entities + found_index;
+    *result = {};
+    return result;
 }
 
-void attack(Entity* player, Game_Info* game, Frame_Info* frame) {
+void attack(Player* player, Game_Info* game, Frame_Info* frame) {
     Entity* attack = create_entity(game, frame);
     *attack = {};
     attack->type = ENTITY_PLAYER_ATTACK;
-    attack->rect = { player->posx + 1.8f, player->posy, .8f, .4f };
+    attack->rect = { player->e->posx + 1.8f, player->e->posy, .8f, .4f };
     attack->is_an_existing_entity = true;
 }
 
@@ -365,13 +368,18 @@ Camera update_camera(Camera camera, Input* input) {
 void init_game_state(Game_Info* game_info, Frame_Info* this_frame, Frame_Info* last_frame) {
     f32 scale = .05f;
     this_frame->camera.scale = last_frame->camera.scale = scale * 2;
-    this_frame->player.rect  = last_frame->player.rect  = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
+    Entity* player_entity = create_entity(game_info, this_frame);
+    player_entity->rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
+    player_entity->type = ENTITY_PLAYER;
+    this_frame->player.e = player_entity;
+
+    // Init last frame to the same as the first frame.
+    memcpy(last_frame, this_frame, sizeof(Frame_Info));
 
     game_info->display_text_count = 0;
     game_info->display_text_chars_to_draw_count = 0;
     game_info->input_text_count = 0;
     game_info->drawing.active = false;
-
     game_info->game_state_is_initialiezed = true;
 }
 
@@ -387,7 +395,7 @@ void init_game_state(Game_Info* game_info, Frame_Info* this_frame, Frame_Info* l
 #define ENTITY_MOVE_SPEED " move_speed="
 #define ENTITY_FACING " facing="
 #define LENGTH(s) (sizeof(s) - 1)
-u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
+void parse_savefile(char* text_start, u32 text_size, Game_Info* game, Frame_Info* frame) {
     u32 count = 0;
     char* text = text_start;
     u32 start_size = LENGTH(ENTITY_START);
@@ -401,10 +409,11 @@ u32 parse_savefile(char* text_start, u32 text_size, Entity* result) {
             f32 radiusy = strtof(text + LENGTH(ENTITY_RADIUSY), &text);
             f32 move_speed = strtof(text + LENGTH(ENTITY_MOVE_SPEED), &text);
             s8 facing = (s8)strtol(text + LENGTH(ENTITY_FACING), &text, 10);
-            result[count++] = Entity{ type, true, Rectf{ posx, posy, radiusx, radiusy }, move_speed, facing};
+            Entity* result = create_entity(game, frame);
+            *result = Entity{ type, true, Rectf{ posx, posy, radiusx, radiusy }, move_speed, facing};
         }
         while (true) {
-            if (text - text_start + 1 >= text_size) return count;
+            if (text - text_start + 1 >= text_size) return;
             if (text[0] == '\n') break;
             ++text;
         }
@@ -422,7 +431,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         // This is stupid since we need to load into last frame, so last frames objects are put into this frames arena.
         Arena temp_storage = *persistent_state;
         u32 file_size = game_info->platform_read_entire_file(temp_storage, "test.txt");
-        last_frame->entities_count = parse_savefile((char*)arena_current(temp_storage), file_size, last_frame->entities);
+        parse_savefile((char*)arena_current(temp_storage), file_size, game_info, last_frame);
     }
     Player* player = &this_frame->player;
     *player = last_frame->player;
@@ -442,8 +451,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     }
     
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
-    player->rect = try_move_axis(player->rect, player_delta.x, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
-    player->rect = try_move_axis(player->rect, player_delta.y, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
+    player->e->rect = try_move_axis(player->e->rect, player_delta.x, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
+    player->e->rect = try_move_axis(player->e->rect, player_delta.y, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
 
     draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame, game_info);
     game_info->empty_entities_count = erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera, game_info->empty_entities, game_info->empty_entities_count);
