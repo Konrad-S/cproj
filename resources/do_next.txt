@@ -1,9 +1,15 @@
 do next:
-    store list of all collisions for object
-    use collide_entities in update_objects
+    playable levels
+        different colors for different entities
+        better editing
+            hotkey to change spawned entity type
+        spike that kills enemies
+        gate that opens when enemies are dead
+        level change
 
-    player attack
-        launch monsters using ballistic
+
+    directional attack
+        attack input + direction
 
     operator overloading
         multiply vec2

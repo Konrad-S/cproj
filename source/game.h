@@ -128,6 +128,7 @@ struct Mouse {
 struct Overlap_Info {
     s32 other_index = -1;
     Rectf rect = {};
+    Direction_Flag flags = 0;
 };
 
 struct Overlap_Info_Node {

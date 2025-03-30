@@ -60,9 +60,11 @@ Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_inf
     Vec2f pos = {};
     if (input[INPUT_RIGHT].down) {
         pos.x += .1f;
+        entity->facing = 1;
     }
     if (input[INPUT_LEFT].down) {
         pos.x -= .1f;
+        entity->facing = -1;
     }
     entity->grounded = last_info.sides_touched & DIR_DOWN;
 
@@ -195,7 +197,8 @@ void attack(Player* player, Frame_Info* frame) {
     Entity* attack = create_entity(frame);
     *attack = {};
     attack->type = ENTITY_PLAYER_ATTACK;
-    attack->rect = { player->e->posx + 1.8f, player->e->posy, .8f, .4f };
+    attack->rect = { player->e->posx + (1.8f * player->e->facing), player->e->posy, .8f, .4f };
+    attack->facing = player->e->facing;
     player->attack = attack;
 }
 
@@ -227,7 +230,6 @@ void update_launched(Entity* object, Entity* others, u32 others_count) {
     if (collision.sides_touched & (DIR_DOWN)) {
         object->grounded = true;
         object->standing_on = others + collision.other_index;
-        object->facing = 1;
     }
     if (collision.sides_touched & (DIR_RIGHT | DIR_LEFT)) {
         object->velocity.x *= -1;
@@ -337,7 +339,7 @@ void launch(Entity* entity, Vec2f velocity) {
 }
 
 const f32 CULL_OBJECT_IF_SMALLER = .2;
-u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result, Arena scratch, u16* empty_entities_result, u16* empty_entities_result_count) {
+u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result, Arena scratch, u16* empty_entities_result, u16* empty_entities_result_count, Player* player) {
     Overlap_Info_List* overlaps = (Overlap_Info_List*)arena_append(&scratch, sizeof(Overlap_Info_List) * last_objects_count);
     overlap_entities(last_objects, last_objects_count, overlaps, &scratch);
 
@@ -355,7 +357,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
                 {
                     Overlap_Info_Node* overlap = overlaps[i].first;
                     while (overlap) {
-                        launch(object, { .1f, .8f });
+                        launch(object, { .1f * (last_objects[overlap->data.other_index].facing), .8f });
                         overlap = overlap->next;
                     }
                 }
@@ -554,7 +556,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         game_info->display_text[count] = game_info->input_text[i];
     }
 
-    this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities, *frame_state, this_frame->empty_entities, &this_frame->empty_entities_count);
+    this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities, *frame_state, this_frame->empty_entities, &this_frame->empty_entities_count, player);
     update_player(player, &last_frame->player);
     if (!player->attack && this_frame->input[INPUT_THROW].presses) {
         //throw_projectile(player->rect, game_info, this_frame);
