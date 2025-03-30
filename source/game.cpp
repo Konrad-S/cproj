@@ -309,13 +309,13 @@ void overlap_entities(Entity* entities, u32 entities_count, Overlap_Info_List* o
                     node.data = info;
                     Overlap_Info_Node* new_node = (Overlap_Info_Node*)arena_append(perm, sizeof(Overlap_Info_Node));
                     *new_node = node;
-                    Overlap_Info_List list = overlap_lists[i];
-                    if (!list.first || !list.last) {
-                        assert(!list.first && !list.last);
-                        list.first = list.last = new_node;
+                    Overlap_Info_List* list = overlap_lists + i;
+                    if (!list->first || !list->last) {
+                        assert(!list->first && !list->last);
+                        list->first = list->last = new_node;
                     } else {
-                        list.last->next = new_node;
-                        list.last = new_node;
+                        list->last->next = new_node;
+                        list->last = new_node;
                     }
                 }
             }
