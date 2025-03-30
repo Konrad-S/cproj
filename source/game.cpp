@@ -81,10 +81,12 @@ Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_inf
     return pos;
 }
 
-Rectf rectf_overlap(Rectf a, Rectf b) {
+bool rectf_overlap(Rectf a, Rectf b, Rectf* result) {
     f32 half_overlap_x  = (a.radiusx + b.radiusx - fabsf(a.posx - b.posx)) / 2;
+    if (half_overlap_x <= 0) return false;
     f32 half_overlap_y = (a.radiusy + b.radiusy - fabsf(a.posy - b.posy)) / 2;
-    
+    if (half_overlap_y <= 0) return false;
+
     f32 cposx;
     if (a.posx > b.posx) {
         cposx = b.posx + b.radiusx - half_overlap_x;
@@ -98,15 +100,16 @@ Rectf rectf_overlap(Rectf a, Rectf b) {
         cposy = b.posy - b.radiusy + half_overlap_y;
     }
 
-    return Rectf{ cposx, cposy, half_overlap_x, half_overlap_y };
+    *result = Rectf{ cposx, cposy, half_overlap_x, half_overlap_y };
+    return true;
 }
 
 u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count, Entity_Type_Flag types_to_check) {
     for (int i = 0; i < others_count; ++i) {
         Entity other = others[i];
         if (!(other.type & types_to_check)) continue;
-        Rectf result = rectf_overlap(rect, other.rect);
-        if (result.radiusx > 0 && result.radiusy > 0)
+        Rectf result;
+        if (rectf_overlap(rect, other.rect, &result))
         {
             return i;
         }
@@ -132,8 +135,8 @@ u32 first_overlap_index(Rectf rect, Entity* others, u32 others_count, Entity_Typ
 u32 get_overlaps(Rectf rect, Rectf* others, u32 others_count, Rectf* results) {
     u32 results_count = 0;
     for (int i = 0; i < others_count; ++i) {
-        Rectf result = rectf_overlap(rect, others[i]);
-        if (result.radiusx > 0 && result.radiusy > 0)
+        Rectf result;
+        if (rectf_overlap(rect, others[i], &result))
         {
             results[results_count++] = result;
         }
@@ -175,10 +178,10 @@ Rectf try_move_axis(Rectf player, f32 move_axis, Axis axis_offset, Entity* other
     return player;
 }
 
-Entity* create_entity(Game_Info* game_info, Frame_Info* frame) {
+Entity* create_entity(Frame_Info* frame) {
     u16 found_index;
-    if (game_info->empty_entities_count) {
-        found_index = game_info->empty_entities[--game_info->empty_entities_count];
+    if (frame->empty_entities_count) {
+        found_index = frame->empty_entities[--frame->empty_entities_count];
     } else {
         assert(frame->entities_count < ENTITIES_CAPACITY);
         found_index = frame->entities_count++;
@@ -188,16 +191,16 @@ Entity* create_entity(Game_Info* game_info, Frame_Info* frame) {
     return result;
 }
 
-void attack(Player* player, Game_Info* game, Frame_Info* frame) {
-    Entity* attack = create_entity(game, frame);
+void attack(Player* player, Frame_Info* frame) {
+    Entity* attack = create_entity(frame);
     *attack = {};
     attack->type = ENTITY_PLAYER_ATTACK;
     attack->rect = { player->e->posx + 1.8f, player->e->posy, .8f, .4f };
     player->attack = attack;
 }
 
-void throw_projectile(Rectf player, Game_Info* game, Frame_Info* frame) {
-    Entity* proj = create_entity(game, frame);
+void throw_projectile(Rectf player, Frame_Info* frame) {
+    Entity* proj = create_entity(frame);
     *proj = {};
     proj->type = ENTITY_PROJECTILE;
     proj->rect = { player.pos, .3f, .3f };
@@ -246,8 +249,6 @@ void update_grounded(Entity* object) {
                     object->facing = -1;
                 } else if (outside_left) {
                     object->facing = 1;
-                    object->velocity = { .1, .5 };
-                    object->standing_on = NULL;
                 }
                 object->posx += object->move_speed * object->facing;
             }
@@ -257,8 +258,82 @@ void update_grounded(Entity* object) {
     }
 }
 
+u32 flag_to_int(u32 type) {
+    switch (type) {
+    case 0:
+        return 0;
+    case 1:
+        return 1;
+    case 2:
+        return 2;
+    case 4:
+        return 3;
+    case 8:
+        return 4;
+    case 16:
+        return 5;
+    case 32:
+        return 6;
+    default:
+        assert(false);
+        return 0;
+    }
+}
+
+#define COLLIDABLE_ENTITIES_COUNT 6
+u32 collision_mapping[COLLIDABLE_ENTITIES_COUNT] = { 
+    ENTITY_NONE, // None
+    0,           // Player
+    0,           // Static
+    ENTITY_PROJECTILE | ENTITY_PLAYER_ATTACK, // Monster
+    ENTITY_MONSTER, // Projectile
+    ENTITY_MONSTER  // Player attack
+};
+
+
+void overlap_entities(Entity* entities, u32 entities_count, Overlap_Info_List* overlap_lists, Arena* perm) {
+    u32 result_count = 0;
+    for (int i = 0; i < entities_count - 1; ++i) {
+        for (int j = i + 1; j < entities_count; ++j) {
+            Entity* a = entities + i;
+            Entity* b = entities + j;
+
+            if (collision_mapping[flag_to_int(a->type)] & b->type) {
+                Rectf overlap;
+                bool collided = rectf_overlap(a->rect, b->rect, &overlap);
+                if (collided) {
+                    Overlap_Info info;
+                    info.other_index = j;
+                    info.rect = overlap;
+                    Overlap_Info_Node node;
+                    node.data = info;
+                    Overlap_Info_Node* new_node = (Overlap_Info_Node*)arena_append(perm, sizeof(Overlap_Info_Node));
+                    *new_node = node;
+                    Overlap_Info_List list = overlap_lists[i];
+                    if (!list.first || !list.last) {
+                        assert(!list.first && !list.last);
+                        list.first = list.last = new_node;
+                    } else {
+                        list.last->next = new_node;
+                        list.last = new_node;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void launch(Entity* entity, Vec2f velocity) {
+    entity->grounded = false;
+    entity->standing_on = NULL;
+    entity->velocity = velocity;
+}
+
 const f32 CULL_OBJECT_IF_SMALLER = .2;
-u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result) {
+u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result, Arena scratch, u16* empty_entities_result, u16* empty_entities_result_count) {
+    Overlap_Info_List* overlaps = (Overlap_Info_List*)arena_append(&scratch, sizeof(Overlap_Info_List) * last_objects_count);
+    overlap_entities(last_objects, last_objects_count, overlaps, &scratch);
+
     for (int i = 0; i < last_objects_count; ++i) {
         Entity* object = result + i;
         *object = last_objects[i];
@@ -266,7 +341,17 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
             object->type = ENTITY_NONE;
         }
         switch (object->type) {
+            case ENTITY_PLAYER:
+            case ENTITY_PLAYER_ATTACK:
+                break;
             case ENTITY_MONSTER:
+                {
+                    Overlap_Info_Node* overlap = overlaps[i].first;
+                    while (overlap) {
+                        launch(object, { .1f, .8f });
+                        overlap = overlap->next;
+                    }
+                }
             case ENTITY_PROJECTILE:
                 {
                     #define COUNT_AS_LAUNCHED_VELOCITY .2f
@@ -282,7 +367,10 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result)
             case ENTITY_STATIC:
                 break;
             case ENTITY_NONE:
+                empty_entities_result[(*empty_entities_result_count)++] = i;
+                break;
             default:
+                assert(false);
                 break;
         }
     }
@@ -317,7 +405,7 @@ Rectf move_rect(Rectf r, Vec2f dist) {
     return Rectf{ r.posx + dist.x, r.posy + dist.y, r.radius };
 }
 
-void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame_Info* frame, Game_Info* game_info) {
+void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame_Info* frame) {
     if (mouse->right.presses) {
         drawing.active = false;
         return;
@@ -330,11 +418,11 @@ void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame
     } else {
         Rectf screen_rect = points_to_rect(drawing.pos, mouse->pos);
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
-        Entity* obstacle = create_entity(game_info, frame);
+        Entity* obstacle = create_entity(frame);
         *obstacle = Entity{ ENTITY_STATIC, move_rect(scaled_rect, camera.pos)};
         drawing.active = false;
 
-        Entity* monster = create_entity(game_info, frame);
+        Entity* monster = create_entity(frame);
         *monster = Entity{ ENTITY_MONSTER, Rectf{ obstacle->posx, obstacle->posy + obstacle->radiusy * 1.5f, obstacle->radiusx * .3f, obstacle->radiusy * .3f } };
         monster->move_speed = .1f;
         return;
@@ -350,14 +438,16 @@ Rectf screen_to_world(Rectf r, Camera camera) {
     return Rectf { screen_to_world(r.pos, camera), r.radiusx * camera.scale, r.radiusy * camera.scale };
 }
 
-u16 erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera, u16* empty_slots, u16 empty_slots_count) {
-    if (!mouse->right.presses) return empty_slots_count;
+void delete_entity(Entity* entity) {
+    entity->type = ENTITY_NONE;
+}
+
+void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera) {
+    if (!mouse->right.presses) return;
     u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count, ENTITY_STATIC | ENTITY_MONSTER | ENTITY_PROJECTILE);
     if (overlap_index < obstacles_count) {
-        obstacles[overlap_index].type = ENTITY_NONE;
-        empty_slots[empty_slots_count++] = overlap_index;
+        delete_entity(obstacles + overlap_index);
     }
-    return empty_slots_count;
 }
 
 Camera update_camera(Camera camera, Input* input) {
@@ -367,10 +457,7 @@ Camera update_camera(Camera camera, Input* input) {
 
 void init_game_state(Game_Info* game_info, Frame_Info* last_frame) {
     f32 scale = .05f;
-    Entity* player_entity = create_entity(game_info, last_frame);
-    player_entity->rect = Rectf{ 12.0f, 4.0f, 1.0f, 1.0f };
-    player_entity->type = ENTITY_PLAYER;
-    last_frame->player.e = player_entity;
+    last_frame->player.e = last_frame->entities;
     last_frame->camera.scale = scale * 2;
 
     game_info->display_text_count = 0;
@@ -392,7 +479,7 @@ void init_game_state(Game_Info* game_info, Frame_Info* last_frame) {
 #define ENTITY_MOVE_SPEED " move_speed="
 #define ENTITY_FACING " facing="
 #define LENGTH(s) (sizeof(s) - 1)
-void parse_savefile(char* text_start, u32 text_size, Game_Info* game, Frame_Info* frame) {
+void parse_savefile(char* text_start, u32 text_size, Frame_Info* frame) {
     u32 count = 0;
     char* text = text_start;
     u32 start_size = LENGTH(ENTITY_START);
@@ -406,7 +493,7 @@ void parse_savefile(char* text_start, u32 text_size, Game_Info* game, Frame_Info
             f32 radiusy = strtof(text + LENGTH(ENTITY_RADIUSY), &text);
             f32 move_speed = strtof(text + LENGTH(ENTITY_MOVE_SPEED), &text);
             s8 facing = (s8)strtol(text + LENGTH(ENTITY_FACING), &text, 10);
-            Entity* result = create_entity(game, frame);
+            Entity* result = create_entity(frame);
             *result = Entity{ type, Rectf{ posx, posy, radiusx, radiusy }, move_speed, facing};
         }
         while (true) {
@@ -428,7 +515,7 @@ void update_player(Player* player, Player* last_player) {
     if (player->attack) {
         u32 frames_active = last_player->attack_frames;
         if (frames_active > ATTACK_DURATION) {
-            player->attack->type = ENTITY_NONE;
+            delete_entity(player->attack);
             player->attack = NULL;
             player->attack_frames = 0;
         } else {
@@ -447,7 +534,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         // This is stupid since we need to load into last frame, so last frames objects are put into this frames arena.
         Arena temp_storage = *persistent_state;
         u32 file_size = game_info->platform_read_entire_file(temp_storage, "test.txt");
-        parse_savefile((char*)arena_current(temp_storage), file_size, game_info, last_frame);
+        parse_savefile((char*)arena_current(temp_storage), file_size, last_frame);
     }
     Player* player = &this_frame->player;
     *player = last_frame->player;
@@ -460,20 +547,19 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         game_info->display_text[count] = game_info->input_text[i];
     }
 
-    this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities);
+    this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities, *frame_state, this_frame->empty_entities, &this_frame->empty_entities_count);
     update_player(player, &last_frame->player);
-    if (this_frame->input[INPUT_THROW].presses) {
+    if (!player->attack && this_frame->input[INPUT_THROW].presses) {
         //throw_projectile(player->rect, game_info, this_frame);
-        attack(player, game_info, this_frame);
+        attack(player, this_frame);
     }
     
     Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
     player->e->rect = try_move_axis(player->e->rect, player_delta.x, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
     player->e->rect = try_move_axis(player->e->rect, player_delta.y, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
 
-    draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame, game_info);
-    game_info->empty_entities_count = erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera, game_info->empty_entities, game_info->empty_entities_count);
-
+    draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame);
+    erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera);
 
     if (this_frame->input[INPUT_EDITOR_SAVE].presses) {
         u32 persistent_reset = persistent_state->current;

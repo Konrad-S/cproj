@@ -499,7 +499,7 @@ int main(void) {
 
     bool even_frame = false;
     bool game_wants_to_keep_running = true;
-    f32 last_time = glfwGetTime() / 10;
+    f32 last_time = 0;
     {
         u32 result = timeBeginPeriod(1);
         assert(result == TIMERR_NOERROR);

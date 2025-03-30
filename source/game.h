@@ -125,9 +125,24 @@ struct Mouse {
     Input right;
 };
 
+struct Overlap_Info {
+    s32 other_index = -1;
+    Rectf rect = {};
+};
+
+struct Overlap_Info_Node {
+    Overlap_Info data = {};
+    Overlap_Info_Node* next = NULL;
+};
+
+struct Overlap_Info_List {
+    Overlap_Info_Node* first = NULL;
+    Overlap_Info_Node* last  = NULL;
+};
+
 struct Collision_Info {
+    s32 other_index = -1;
     Direction_Flag sides_touched = 0;
-    u32 other_index = 0;
 };
 
 struct Drawing_Obstacle {
@@ -152,6 +167,8 @@ struct Frame_Info {
     Entity  entities[ENTITIES_CAPACITY];
     u32     entities_count;
     s32     frame_pointer_delta;
+    u16     empty_entities[ENTITIES_CAPACITY];
+    u16     empty_entities_count = 0;
 };
 
 typedef u32  (*Platform_Read_Entire_File)(Arena, const char*);
@@ -168,8 +185,6 @@ struct Game_Info {
     char*   input_text;
     u8      input_text_count = 0;
     Drawing_Obstacle drawing;
-    u16     empty_entities[ENTITIES_CAPACITY];
-    u16     empty_entities_count = 0;
 };
 
 //Rectf get_updated_player(Rectf last_player, Input input);

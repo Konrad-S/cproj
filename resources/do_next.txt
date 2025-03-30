@@ -1,9 +1,9 @@
 do next:
-    player attack
-        separate hitbox that exists for certain time
-        launch monsters using ballistic
+    store list of all collisions for object
+    use collide_entities in update_objects
 
-    delta time
+    player attack
+        launch monsters using ballistic
 
     operator overloading
         multiply vec2

@@ -4,7 +4,11 @@ arena allocation
         transient is wiped (current pos set to 0) each frame
         "double-buffer" frame arena, alternatve between two arenas, to have access to last frame
 
-    
+    "scratch" arenas
+        if a function need permanent arens, the other arena is the scratch (persistent/frame)
+        
+
+
 
 optimize collision detection?
     two things
