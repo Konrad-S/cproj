@@ -51,11 +51,14 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
         case GLFW_KEY_J:
             input_key = INPUT_CAM_LEFT;
             break;
+        case GLFW_KEY_T:
+            input_key = INPUT_THROW;
+            break;
         case GLFW_KEY_F6:
             input_key = INPUT_EDITOR_SAVE;
             break;
-        case GLFW_KEY_T:
-            input_key = INPUT_THROW;
+        case GLFW_KEY_Q:
+            input_key = INPUT_EDITOR_CYCLE_DRAW;
             break;
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, 1);

@@ -107,8 +107,9 @@ enum InputAction {
     INPUT_CAM_RIGHT,
     INPUT_CAM_DOWN,
     INPUT_CAM_LEFT,
-    INPUT_EDITOR_SAVE,
     INPUT_THROW,
+    INPUT_EDITOR_SAVE,
+    INPUT_EDITOR_CYCLE_DRAW,
     INPUT_ENUM_COUNT,
 };
 #define INPUT_SIZE (INPUT_ENUM_COUNT * sizeof(Input))
@@ -176,14 +177,15 @@ typedef bool (*Platform_Write_Entire_File)(const char*, const char*, u32);
 struct Game_Info {
     Platform_Read_Entire_File platform_read_entire_file;
     Platform_Write_Entire_File platform_write_entire_file;
-    bool    game_state_is_initialiezed = false;
+    bool    game_state_is_initialiezed;
 #define DISPLAY_TEXT_CAPACITY 255
     char    display_text[DISPLAY_TEXT_CAPACITY];
-    u32     display_text_count = 0;
-    u32     display_text_chars_to_draw_count = 0;
+    u32     display_text_count;
+    u32     display_text_chars_to_draw_count;
     char*   input_text;
-    u8      input_text_count = 0;
+    u8      input_text_count;
     Drawing_Obstacle drawing;
+    Entity_Type currently_drawing;
 };
 
 //Rectf get_updated_player(Rectf last_player, Input input);

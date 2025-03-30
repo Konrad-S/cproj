@@ -18,6 +18,7 @@ u8* arena_append(Arena* arena, u32 data_size) {
     assert(arena->current + data_size <= arena->capacity);
     u8* result = arena->data + arena->current;
     arena->current += data_size;
+    memset(result, 0, data_size);
     return result;
 }
 
@@ -414,7 +415,7 @@ Rectf move_rect(Rectf r, Vec2f dist) {
     return Rectf{ r.posx + dist.x, r.posy + dist.y, r.radius };
 }
 
-void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame_Info* frame) {
+void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame_Info* frame, Entity_Type type) {
     if (mouse->right.presses) {
         drawing.active = false;
         return;
@@ -423,20 +424,13 @@ void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame
     if (!drawing.active) {
         drawing.active = true;
         drawing.pos = mouse->pos;
-        return;
     } else {
         Rectf screen_rect = points_to_rect(drawing.pos, mouse->pos);
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
         Entity* obstacle = create_entity(frame);
-        *obstacle = Entity{ ENTITY_STATIC, move_rect(scaled_rect, camera.pos)};
+        *obstacle = Entity{ type, move_rect(scaled_rect, camera.pos)};
         drawing.active = false;
-
-        Entity* monster = create_entity(frame);
-        *monster = Entity{ ENTITY_MONSTER, Rectf{ obstacle->posx, obstacle->posy + obstacle->radiusy * 1.5f, obstacle->radiusx * .3f, obstacle->radiusy * .3f } };
-        monster->move_speed = .1f;
-        return;
     }
-    return;
 }
 
 Vec2f screen_to_world(Vec2f v, Camera camera) {
@@ -474,6 +468,7 @@ void init_game_state(Game_Info* game_info, Frame_Info* last_frame) {
     game_info->input_text_count = 0;
     game_info->drawing.active = false;
     game_info->game_state_is_initialiezed = true;
+    game_info->currently_drawing = ENTITY_STATIC;
 }
 
 // Idea: Loop over entire text and get list of indices of new lines
@@ -567,7 +562,20 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     player->e->rect = try_move_axis(player->e->rect, player_delta.x, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
     player->e->rect = try_move_axis(player->e->rect, player_delta.y, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
 
-    draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame);
+    if (this_frame->input[INPUT_EDITOR_CYCLE_DRAW].presses) {
+        switch (game_info->currently_drawing) {
+            case ENTITY_STATIC:
+                game_info->currently_drawing = ENTITY_MONSTER;
+                break;
+            case ENTITY_MONSTER:
+                game_info->currently_drawing = ENTITY_STATIC;
+                break;
+            default:
+                game_info->currently_drawing = ENTITY_STATIC;
+                break;
+        }
+    }
+    draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame, game_info->currently_drawing);
     erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera);
 
     if (this_frame->input[INPUT_EDITOR_SAVE].presses) {
