@@ -1,6 +1,5 @@
 do next:
     playable levels
-        different colors for different entities
         better editing
             hotkey to change spawned entity type
         spike that kills enemies
@@ -21,6 +20,9 @@ do next:
 
     Levels
 
+    Draw arrays to draw all entites
+        pos, size, color in buffer
+            maybe depth for sorting
 
     build in sublime
 

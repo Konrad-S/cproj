@@ -161,8 +161,6 @@ struct Frame_Info {
     Input   input[INPUT_ENUM_COUNT];
     Camera  camera;
     Mouse*  mouse;
-    Rectf*  collisions;
-    u32     collisions_count;
     Collision_Info collision_info;
 #define ENTITIES_CAPACITY 2000
     Entity  entities[ENTITIES_CAPACITY];

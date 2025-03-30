@@ -479,6 +479,7 @@ int main(void) {
     GLuint scale_location = glGetUniformLocation(shader_program, "scale");
     GLuint camera_location = glGetUniformLocation(shader_program, "camera");
     GLuint color_location = glGetUniformLocation(shader_program, "color");
+    GLuint rect_color_location = glGetUniformLocation(shader_program, "rect_color");
     //
     // Setup game state
     frame_arena_0.current += sizeof(Frame_Info);
@@ -572,21 +573,21 @@ int main(void) {
             Rectf rect = object.rect;
             glUniform2f(offset_location, rect.posx, rect.posy);
             glUniform2f(scale_location, rect.radiusx, rect.radiusy);
-            glUniform4f(color_location, 0, 1, 0, 1);
+            glUniform3f(rect_color_location, 0, 1, 0);
+            switch (object.type) {
+                case ENTITY_PLAYER:
+                case ENTITY_PLAYER_ATTACK:
+                    glUniform3f(rect_color_location, .1, 0, .8);
+                    break;
+                case ENTITY_STATIC:
+                    glUniform3f(rect_color_location, .3, .3, .3);
+                    break;
+                case ENTITY_MONSTER:
+                    glUniform3f(rect_color_location, 1, 0, 0);
+                    break;
+            }
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
-        glUniform2f(offset_location, this_frame->player.e->posx, this_frame->player.e->rect.posy);
-        glUniform2f(scale_location, this_frame->player.e->radiusx, this_frame->player.e->radiusy);
-        glUniform4f(color_location, 1, 1, 1, 1);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        for (int i = 0; i < this_frame->collisions_count; i++) {
-            Rectf rect = this_frame->collisions[i];
-            glUniform2f(offset_location, rect.posx, rect.posy);
-            glUniform2f(scale_location, rect.radiusx, rect.radiusy);
-            glUniform4f(color_location, 0, 0, 1, 0.5f);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
-
 
         glfwSwapBuffers(window);
         global_mouse.left.presses = 0;

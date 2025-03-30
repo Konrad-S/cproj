@@ -6,6 +6,7 @@ uniform vec2 world_scale;
 uniform vec2 offset;
 uniform vec2 scale;
 uniform vec2 camera;
+uniform vec3 rect_color;
 out vec3 ourColor;
 out vec2 TexCoord;
 void main() {
@@ -15,5 +16,5 @@ void main() {
    vec2 screen = screen_offbyhalf + vec2(-1.0, -1.0);
    gl_Position = vec4(screen, 0, 1.0);
    TexCoord = aTexCoord;
-   ourColor = aColor;
+   ourColor = rect_color;
 }
