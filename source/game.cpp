@@ -286,10 +286,21 @@ u32 collision_mapping[COLLIDABLE_ENTITIES_COUNT] = {
     0,           // Player
     0,           // Static
     ENTITY_PROJECTILE | ENTITY_PLAYER_ATTACK, // Monster
-    ENTITY_MONSTER, // Projectile
-    ENTITY_MONSTER  // Player attack
+    0, //ENTITY_MONSTER, // Projectile
+    0, //ENTITY_MONSTER  // Player attack
 };
 
+void push_to_list(Overlap_Info_List* list, Overlap_Info_Node node, Arena* perm) {
+    Overlap_Info_Node* new_node = (Overlap_Info_Node*)arena_append(perm, sizeof(Overlap_Info_Node));
+    *new_node = node;
+    if (!list->first || !list->last) {
+        assert(!list->first && !list->last);
+        list->first = list->last = new_node;
+    } else {
+        list->last->next = new_node;
+        list->last = new_node;
+    }
+}
 
 void overlap_entities(Entity* entities, u32 entities_count, Overlap_Info_List* overlap_lists, Arena* perm) {
     u32 result_count = 0;
@@ -297,27 +308,23 @@ void overlap_entities(Entity* entities, u32 entities_count, Overlap_Info_List* o
         for (int j = i + 1; j < entities_count; ++j) {
             Entity* a = entities + i;
             Entity* b = entities + j;
-
-            if (collision_mapping[flag_to_int(a->type)] & b->type) {
-                Rectf overlap;
-                bool collided = rectf_overlap(a->rect, b->rect, &overlap);
-                if (collided) {
-                    Overlap_Info info;
-                    info.other_index = j;
-                    info.rect = overlap;
-                    Overlap_Info_Node node;
-                    node.data = info;
-                    Overlap_Info_Node* new_node = (Overlap_Info_Node*)arena_append(perm, sizeof(Overlap_Info_Node));
-                    *new_node = node;
-                    Overlap_Info_List* list = overlap_lists + i;
-                    if (!list->first || !list->last) {
-                        assert(!list->first && !list->last);
-                        list->first = list->last = new_node;
-                    } else {
-                        list->last->next = new_node;
-                        list->last = new_node;
-                    }
-                }
+            bool a_cares_b = collision_mapping[flag_to_int(a->type)] & b->type;
+            bool b_cares_a = collision_mapping[flag_to_int(b->type)] & a->type;
+            if (!a_cares_b && !b_cares_a) {
+                continue;
+            }
+            Rectf overlap;
+            bool collided = rectf_overlap(a->rect, b->rect, &overlap);
+            if (!collided) continue;
+            if (a_cares_b) {
+                Overlap_Info_Node node;
+                node.data = { j, overlap };
+                push_to_list(overlap_lists + i, node, perm);
+            }
+            if (b_cares_a) {
+                Overlap_Info_Node node;
+                node.data = { i, overlap };
+                push_to_list(overlap_lists + j, node, perm);
             }
         }
     }
