@@ -62,42 +62,50 @@ enum Entity_Type {
     ENTITY_STATIC        = 2,
     ENTITY_MONSTER       = 4,
     ENTITY_PROJECTILE    = 8,
-    ENTITY_SPIKE         = 16,
-    ENTITY_PLAYER_ATTACK = 32,
+    ENTITY_PLAYER_ATTACK = 16,
+    ENTITY_SPIKE         = 32,
+    ENTITY_DOOR          = 64,
 };
 typedef u32 Entity_Type_Flag;
 
-struct Entity {
-    Entity_Type type;
-    union {
-        Rectf rect;
-        RECTF_DEFINITION(ANONYMOUS);
-    };
-    f32     move_speed;
-    s8      facing;
-    bool    grounded;
-    Entity* standing_on;
-    Vec2f   velocity;
-};
-
-struct Player {
-    Entity* e;
-    Entity* attack;
-    u32     attack_frames;
-};
-
-enum Axis {
-    AXIS_X = 0,
-    AXIS_Y = 1,
+enum Door_Flags {
+    DOOR_OPEN = 1,
 };
 
 enum Direction {
+    DIR_NONE  = 0,
     DIR_UP    = 1,
     DIR_RIGHT = 2,
     DIR_DOWN  = 4,
     DIR_LEFT  = 8,
 };
 typedef u8 Direction_Flag;
+
+struct Entity {
+    Entity_Type type = {};
+    union {
+        Rectf rect = {};
+        RECTF_DEFINITION(ANONYMOUS);
+    };
+    f32     move_speed = {};
+    Direction facing = {};
+    bool    grounded = {};
+    Entity* standing_on = {};
+    Vec2f   velocity = {};
+    u16     flags = {};
+};
+
+struct Player {
+    Entity*   e;
+    Entity*   attack;
+    u32       attack_frames;
+    Direction transition_level_in_direction;
+};
+
+enum Axis {
+    AXIS_X = 0,
+    AXIS_Y = 1,
+};
 
 enum InputAction {
     INPUT_UP,

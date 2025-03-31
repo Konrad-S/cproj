@@ -591,6 +591,8 @@ int main(void) {
                 case ENTITY_SPIKE:
                     glUniform3f(rect_color_location, 1, 1, 1);
                     break;
+                case ENTITY_DOOR:
+                    glUniform3f(rect_color_location, .5, .2, .5);
             }
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }

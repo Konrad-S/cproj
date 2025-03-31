@@ -3,6 +3,8 @@ do next:
         gate that opens when enemies are dead
         level change
 
+    save file
+        entity type as string
 
     directional attack
         attack input + direction

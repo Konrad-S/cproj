@@ -61,11 +61,11 @@ Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_inf
     Vec2f pos = {};
     if (input[INPUT_RIGHT].down) {
         pos.x += .1f;
-        entity->facing = 1;
+        entity->facing = DIR_RIGHT;
     }
     if (input[INPUT_LEFT].down) {
         pos.x -= .1f;
-        entity->facing = -1;
+        entity->facing = DIR_LEFT;
     }
     entity->grounded = last_info.sides_touched & DIR_DOWN;
 
@@ -181,6 +181,19 @@ Rectf try_move_axis(Rectf player, f32 move_axis, Axis axis_offset, Entity* other
     return player;
 }
 
+s8 direction_to_int(Direction dir) {
+    switch(dir) {
+        case DIR_RIGHT:
+            return 1;
+        case DIR_LEFT:
+            return -1;
+        case DIR_DOWN:
+        case DIR_UP:
+        default:
+            return 0;
+    }
+}
+
 Entity* create_entity(Frame_Info* frame) {
     u16 found_index;
     if (frame->empty_entities_count) {
@@ -198,7 +211,7 @@ void attack(Player* player, Frame_Info* frame) {
     Entity* attack = create_entity(frame);
     *attack = {};
     attack->type = ENTITY_PLAYER_ATTACK;
-    attack->rect = { player->e->posx + (1.8f * player->e->facing), player->e->posy, .8f, .4f };
+    attack->rect = { player->e->posx + (1.8f * direction_to_int(player->e->facing)), player->e->posy, .8f, .4f };
     attack->facing = player->e->facing;
     player->attack = attack;
 }
@@ -231,6 +244,9 @@ void update_launched(Entity* object, Entity* others, u32 others_count) {
     if (collision.sides_touched & (DIR_DOWN)) {
         object->grounded = true;
         object->standing_on = others + collision.other_index;
+        if (object->facing = DIR_DOWN) {
+            object->facing = DIR_LEFT;
+        }
     }
     if (collision.sides_touched & (DIR_RIGHT | DIR_LEFT)) {
         object->velocity.x *= -1;
@@ -247,13 +263,13 @@ void update_grounded(Entity* object) {
                 bool outside_right = object->posx + object->radiusx > other->posx + other->radiusx;
                 bool outside_left  = object->posx - object->radiusx < other->posx - other->radiusx;
                 if (outside_right && outside_left) {
-                    object->facing = 0;
+                    object->facing = DIR_DOWN;
                 } else if (outside_right) {
-                    object->facing = -1;
+                    object->facing = DIR_LEFT;
                 } else if (outside_left) {
-                    object->facing = 1;
+                    object->facing = DIR_RIGHT;
                 }
-                object->posx += object->move_speed * object->facing;
+                object->posx += object->move_speed * direction_to_int(object->facing);
             }
             break;
         case ENTITY_PROJECTILE:
@@ -277,20 +293,32 @@ u32 flag_to_int(u32 type) {
         return 5;
     case 32:
         return 6;
+    case 64:
+        return 7;
+    case 128:
+        return 8;
+    case 256:
+        return 9;
+    case 512:
+        return 10;
+    case 1024:
+        return 11;
     default:
         assert(false);
         return 0;
     }
 }
 
-#define COLLIDABLE_ENTITIES_COUNT 6
+#define COLLIDABLE_ENTITIES_COUNT 8
 u32 overlap_mapping[COLLIDABLE_ENTITIES_COUNT] = { 
     ENTITY_NONE, // None
-    0,           // Player
+    ENTITY_DOOR, // Player
     0,           // Static
     ENTITY_PROJECTILE | ENTITY_PLAYER_ATTACK | ENTITY_SPIKE, // Monster
-    0, //ENTITY_MONSTER, // Projectile
-    0, //ENTITY_MONSTER  // Player attack
+    0, // Projectile
+    0, // Player attack
+    0, // Spike
+    0, // Door 
 };
 
 void push_to_list(Overlap_Info_List* list, Overlap_Info_Node node, Arena* perm) {
@@ -343,6 +371,12 @@ void delete_entity(Entity* entity) {
     entity->type = ENTITY_NONE;
 }
 
+void player_door_overlap(Player* player, Entity* door) {
+    if (door->flags & DOOR_OPEN) {
+        player->transition_level_in_direction = door->facing;
+    }
+}
+
 const f32 CULL_OBJECT_IF_SMALLER = .2;
 u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result, Arena scratch, u16* empty_entities_result, u16* empty_entities_result_count, Player* player) {
     Overlap_Info_List* overlaps = (Overlap_Info_List*)arena_append(&scratch, sizeof(Overlap_Info_List) * last_objects_count);
@@ -354,13 +388,22 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
         if (object->radiusx < CULL_OBJECT_IF_SMALLER || object->radiusy < CULL_OBJECT_IF_SMALLER) {
             object->type = ENTITY_NONE;
         }
+        Overlap_Info_Node* overlap = overlaps[i].first;
         switch (object->type) {
             case ENTITY_PLAYER:
+                while (overlap) {
+                    switch (overlap->data.type) {
+                        case ENTITY_DOOR:
+                            player_door_overlap(player, last_objects + overlap->data.other_index);
+                            break; 
+                    }
+                    overlap = overlap->next;
+                }        
+                break;
             case ENTITY_PLAYER_ATTACK:
                 break;
             case ENTITY_MONSTER:
                 {
-                    Overlap_Info_Node* overlap = overlaps[i].first;
                     while (overlap) {
                         switch (overlap->data.type) {
                             case ENTITY_PLAYER_ATTACK:
@@ -388,6 +431,8 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
             case ENTITY_STATIC:
                 break;
             case ENTITY_SPIKE:
+                break;
+            case ENTITY_DOOR:
                 break;
             case ENTITY_NONE:
                 empty_entities_result[(*empty_entities_result_count)++] = i;
@@ -482,7 +527,7 @@ void init_game_state(Game_Info* game_info, Frame_Info* last_frame) {
 
 // Idea: Loop over entire text and get list of indices of new lines
 // Seems like a good way to deal with incorrect entries
-// Entity: type=1 posx=123.4 posy=123.4 radiusx=123.4 radiusy=123.4 move_speed=123.4 facing=-1
+// Entity: type=1 posx=123.4 posy=123.4 radiusx=123.4 radiusy=123.4 move_speed=123.4 facing=2
 #define ENTITY_START "Entity:"
 #define ENTITY_TYPE " type="
 #define ENTITY_POSX " posx="
@@ -505,7 +550,7 @@ void parse_savefile(char* text_start, u32 text_size, Frame_Info* frame) {
             f32 radiusx = strtof(text + LENGTH(ENTITY_RADIUSX), &text);
             f32 radiusy = strtof(text + LENGTH(ENTITY_RADIUSY), &text);
             f32 move_speed = strtof(text + LENGTH(ENTITY_MOVE_SPEED), &text);
-            s8 facing = (s8)strtol(text + LENGTH(ENTITY_FACING), &text, 10);
+            Direction facing = (Direction)strtol(text + LENGTH(ENTITY_FACING), &text, 10);
             Entity* result = create_entity(frame);
             *result = Entity{ type, Rectf{ posx, posy, radiusx, radiusy }, move_speed, facing};
         }
@@ -580,7 +625,11 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
                 game_info->currently_drawing = ENTITY_SPIKE;
                 break;
             case ENTITY_SPIKE:
+                game_info->currently_drawing = ENTITY_DOOR;
+                break;
+            case ENTITY_DOOR:
                 game_info->currently_drawing = ENTITY_STATIC;
+                break;
             default:
                 game_info->currently_drawing = ENTITY_STATIC;
                 break;
