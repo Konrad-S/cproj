@@ -588,6 +588,9 @@ int main(void) {
                 case ENTITY_MONSTER:
                     glUniform3f(rect_color_location, 1, 0, 0);
                     break;
+                case ENTITY_SPIKE:
+                    glUniform3f(rect_color_location, 1, 1, 1);
+                    break;
             }
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }

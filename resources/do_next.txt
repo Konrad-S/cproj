@@ -1,8 +1,5 @@
 do next:
     playable levels
-        better editing
-            hotkey to change spawned entity type
-        spike that kills enemies
         gate that opens when enemies are dead
         level change
 

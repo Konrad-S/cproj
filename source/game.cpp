@@ -284,11 +284,11 @@ u32 flag_to_int(u32 type) {
 }
 
 #define COLLIDABLE_ENTITIES_COUNT 6
-u32 collision_mapping[COLLIDABLE_ENTITIES_COUNT] = { 
+u32 overlap_mapping[COLLIDABLE_ENTITIES_COUNT] = { 
     ENTITY_NONE, // None
     0,           // Player
     0,           // Static
-    ENTITY_PROJECTILE | ENTITY_PLAYER_ATTACK, // Monster
+    ENTITY_PROJECTILE | ENTITY_PLAYER_ATTACK | ENTITY_SPIKE, // Monster
     0, //ENTITY_MONSTER, // Projectile
     0, //ENTITY_MONSTER  // Player attack
 };
@@ -311,8 +311,8 @@ void overlap_entities(Entity* entities, u32 entities_count, Overlap_Info_List* o
         for (int j = i + 1; j < entities_count; ++j) {
             Entity* a = entities + i;
             Entity* b = entities + j;
-            bool a_cares_b = collision_mapping[flag_to_int(a->type)] & b->type;
-            bool b_cares_a = collision_mapping[flag_to_int(b->type)] & a->type;
+            bool a_cares_b = overlap_mapping[flag_to_int(a->type)] & b->type;
+            bool b_cares_a = overlap_mapping[flag_to_int(b->type)] & a->type;
             if (!a_cares_b && !b_cares_a) {
                 continue;
             }
@@ -321,12 +321,12 @@ void overlap_entities(Entity* entities, u32 entities_count, Overlap_Info_List* o
             if (!collided) continue;
             if (a_cares_b) {
                 Overlap_Info_Node node;
-                node.data = { j, overlap };
+                node.data = { b->type, j, overlap };
                 push_to_list(overlap_lists + i, node, perm);
             }
             if (b_cares_a) {
                 Overlap_Info_Node node;
-                node.data = { i, overlap };
+                node.data = { a->type, i, overlap };
                 push_to_list(overlap_lists + j, node, perm);
             }
         }
@@ -337,6 +337,10 @@ void launch(Entity* entity, Vec2f velocity) {
     entity->grounded = false;
     entity->standing_on = NULL;
     entity->velocity = velocity;
+}
+
+void delete_entity(Entity* entity) {
+    entity->type = ENTITY_NONE;
 }
 
 const f32 CULL_OBJECT_IF_SMALLER = .2;
@@ -358,7 +362,14 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
                 {
                     Overlap_Info_Node* overlap = overlaps[i].first;
                     while (overlap) {
-                        launch(object, { .1f * (last_objects[overlap->data.other_index].facing), .8f });
+                        switch (overlap->data.type) {
+                            case ENTITY_PLAYER_ATTACK:
+                                launch(object, { .1f * (last_objects[overlap->data.other_index].facing), .8f });
+                                break;
+                            case ENTITY_SPIKE:
+                                delete_entity(object);
+                                break;
+                        }
                         overlap = overlap->next;
                     }
                 }
@@ -375,6 +386,8 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
                 }
                 break;
             case ENTITY_STATIC:
+                break;
+            case ENTITY_SPIKE:
                 break;
             case ENTITY_NONE:
                 empty_entities_result[(*empty_entities_result_count)++] = i;
@@ -439,10 +452,6 @@ Vec2f screen_to_world(Vec2f v, Camera camera) {
 
 Rectf screen_to_world(Rectf r, Camera camera) {
     return Rectf { screen_to_world(r.pos, camera), r.radiusx * camera.scale, r.radiusy * camera.scale };
-}
-
-void delete_entity(Entity* entity) {
-    entity->type = ENTITY_NONE;
 }
 
 void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera) {
@@ -568,8 +577,10 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
                 game_info->currently_drawing = ENTITY_MONSTER;
                 break;
             case ENTITY_MONSTER:
-                game_info->currently_drawing = ENTITY_STATIC;
+                game_info->currently_drawing = ENTITY_SPIKE;
                 break;
+            case ENTITY_SPIKE:
+                game_info->currently_drawing = ENTITY_STATIC;
             default:
                 game_info->currently_drawing = ENTITY_STATIC;
                 break;

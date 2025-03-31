@@ -57,12 +57,13 @@ struct Pos_Offset {
 };
 
 enum Entity_Type {
-    ENTITY_NONE       = 0,
-    ENTITY_PLAYER     = 1,
-    ENTITY_STATIC     = 2,
-    ENTITY_MONSTER    = 4,
-    ENTITY_PROJECTILE = 8,
-    ENTITY_PLAYER_ATTACK = 16,
+    ENTITY_NONE          = 0,
+    ENTITY_PLAYER        = 1,
+    ENTITY_STATIC        = 2,
+    ENTITY_MONSTER       = 4,
+    ENTITY_PROJECTILE    = 8,
+    ENTITY_SPIKE         = 16,
+    ENTITY_PLAYER_ATTACK = 32,
 };
 typedef u32 Entity_Type_Flag;
 
@@ -127,6 +128,7 @@ struct Mouse {
 };
 
 struct Overlap_Info {
+    Entity_Type type;
     s32 other_index = -1;
     Rectf rect = {};
     Direction_Flag flags = 0;
