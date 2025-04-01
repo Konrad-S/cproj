@@ -1,7 +1,5 @@
 do next:
-    playable levels
-        gate that opens when enemies are dead
-        level change
+    save/load level in asset folder
 
     save file
         entity type as string
