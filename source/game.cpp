@@ -538,6 +538,7 @@ void init_game_state(Game_Info* game_info, Frame_Info* last_frame) {
 #define ENTITY_FACING " facing="
 #define LENGTH(s) (sizeof(s) - 1)
 void parse_savefile(char* text_start, u32 text_size, Frame_Info* frame) {
+    frame->entities_count = 0;
     u32 count = 0;
     char* text = text_start;
     u32 start_size = LENGTH(ENTITY_START);
@@ -561,6 +562,12 @@ void parse_savefile(char* text_start, u32 text_size, Frame_Info* frame) {
         }
         ++text;
     }
+}
+
+void load_level(char* level_path, Game_Info* game_info, Frame_Info* frame, Arena scratch) {
+    u32 file_size = game_info->platform_read_entire_file(scratch, level_path);
+    char* file_content = (char*)arena_current(scratch);
+    parse_savefile(file_content, file_size, frame);
 }
 
 #define ATTACK_DURATION 20
@@ -587,12 +594,8 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
     Frame_Info* this_frame = (Frame_Info*)frame_state->data;
     if (!game_info->game_state_is_initialiezed) {
         init_game_state(game_info, last_frame);
-        //
-        // Load save file
-        // This is stupid since we need to load into last frame, so last frames objects are put into this frames arena.
-        Arena temp_storage = *persistent_state;
-        u32 file_size = game_info->platform_read_entire_file(temp_storage, "test.txt");
-        parse_savefile((char*)arena_current(temp_storage), file_size, last_frame);
+        
+        load_level("test.txt", game_info, last_frame, *persistent_state);
     }
     Player* player = &this_frame->player;
     *player = last_frame->player;
@@ -603,6 +606,10 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         u32 count = game_info->display_text_count++;
         count = MIN(count, DISPLAY_TEXT_CAPACITY);
         game_info->display_text[count] = game_info->input_text[i];
+    }
+
+    if (this_frame->input[INPUT_EDITOR_LOAD].presses) {
+        load_level("test.txt", game_info, last_frame, *persistent_state);
     }
 
     this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities, *frame_state, this_frame->empty_entities, &this_frame->empty_entities_count, player);
