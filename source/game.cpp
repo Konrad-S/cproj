@@ -539,6 +539,7 @@ void init_game_state(Game_Info* game_info, Frame_Info* last_frame) {
 #define LENGTH(s) (sizeof(s) - 1)
 void parse_savefile(char* text_start, u32 text_size, Frame_Info* frame) {
     frame->entities_count = 0;
+    frame->empty_entities_count = 0;
     u32 count = 0;
     char* text = text_start;
     u32 start_size = LENGTH(ENTITY_START);
