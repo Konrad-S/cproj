@@ -179,7 +179,7 @@ struct Frame_Info {
     u32     entities_count;
     s32     frame_pointer_delta;
     u16     empty_entities[ENTITIES_CAPACITY];
-    u16     empty_entities_count = 0;
+    u16     empty_entities_count;
 };
 
 typedef u32  (*Platform_Read_Entire_File)(Arena, const char*);

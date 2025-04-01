@@ -211,7 +211,7 @@ void attack(Player* player, Frame_Info* frame) {
     Entity* attack = create_entity(frame);
     *attack = {};
     attack->type = ENTITY_PLAYER_ATTACK;
-    attack->rect = { player->e->posx + (1.8f * direction_to_int(player->e->facing)), player->e->posy, .8f, .4f };
+    attack->rect = { player->e->posx + (player->e->radiusx * direction_to_int(player->e->facing)), player->e->posy, .8f, .4f };
     attack->facing = player->e->facing;
     player->attack = attack;
 }
@@ -377,11 +377,14 @@ void player_door_overlap(Player* player, Entity* door) {
     }
 }
 
+
+
 const f32 CULL_OBJECT_IF_SMALLER = .2;
 u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result, Arena scratch, u16* empty_entities_result, u16* empty_entities_result_count, Player* player) {
     Overlap_Info_List* overlaps = (Overlap_Info_List*)arena_append(&scratch, sizeof(Overlap_Info_List) * last_objects_count);
     overlap_entities(last_objects, last_objects_count, overlaps, &scratch);
 
+    u32 monsters_alive = 0;
     for (int i = 0; i < last_objects_count; ++i) {
         Entity* object = result + i;
         *object = last_objects[i];
@@ -395,7 +398,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
                     switch (overlap->data.type) {
                         case ENTITY_DOOR:
                             player_door_overlap(player, last_objects + overlap->data.other_index);
-                            break; 
+                            break;
                     }
                     overlap = overlap->next;
                 }        
@@ -403,18 +406,17 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
             case ENTITY_PLAYER_ATTACK:
                 break;
             case ENTITY_MONSTER:
-                {
-                    while (overlap) {
-                        switch (overlap->data.type) {
-                            case ENTITY_PLAYER_ATTACK:
-                                launch(object, { .1f * (last_objects[overlap->data.other_index].facing), .8f });
-                                break;
-                            case ENTITY_SPIKE:
-                                delete_entity(object);
-                                break;
-                        }
-                        overlap = overlap->next;
+                ++monsters_alive;
+                while (overlap) {
+                    switch (overlap->data.type) {
+                        case ENTITY_PLAYER_ATTACK:
+                            launch(object, { .1f * direction_to_int(last_objects[overlap->data.other_index].facing), .8f });
+                            break;
+                        case ENTITY_SPIKE:
+                            delete_entity(object);
+                            break;
                     }
+                    overlap = overlap->next;
                 }
             case ENTITY_PROJECTILE:
                 {
@@ -445,6 +447,12 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
     s64 frames_pointer_offset = (u8*)last_objects - (u8*)result;
     for (int i = 0; i < last_objects_count; ++i) {
         Entity* object = result + i;
+
+        if (object->type == ENTITY_DOOR) {
+            if (monsters_alive == 0) object->flags |=  DOOR_OPEN;
+            else                     object->flags &= ~DOOR_OPEN;
+        }
+
         if (!object->standing_on) continue;
         if (!object->standing_on->type) {
             object->standing_on = NULL;
@@ -487,6 +495,7 @@ void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame
         Rectf scaled_rect = scale_rect(screen_rect, camera.scale);
         Entity* obstacle = create_entity(frame);
         *obstacle = Entity{ type, move_rect(scaled_rect, camera.pos)};
+        obstacle->facing = DIR_RIGHT;
         drawing.active = false;
     }
 }
@@ -501,7 +510,7 @@ Rectf screen_to_world(Rectf r, Camera camera) {
 
 void erase_obstacle(Mouse* mouse, Entity* obstacles, u32 obstacles_count, Camera camera) {
     if (!mouse->right.presses) return;
-    u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count, ENTITY_STATIC | ENTITY_MONSTER | ENTITY_PROJECTILE);
+    u32 overlap_index = first_overlap_index(screen_to_world(Rectf {mouse->pos, 0, 0}, camera), obstacles, obstacles_count, 0XFFFFFFFF & ~ENTITY_PLAYER);
     if (overlap_index < obstacles_count) {
         delete_entity(obstacles + overlap_index);
     }
@@ -569,6 +578,8 @@ void load_level(char* level_path, Game_Info* game_info, Frame_Info* frame, Arena
     u32 file_size = game_info->platform_read_entire_file(scratch, level_path);
     char* file_content = (char*)arena_current(scratch);
     parse_savefile(file_content, file_size, frame);
+
+    frame->player.transition_level_in_direction = DIR_NONE;
 }
 
 #define ATTACK_DURATION 20
@@ -609,7 +620,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         game_info->display_text[count] = game_info->input_text[i];
     }
 
-    if (this_frame->input[INPUT_EDITOR_LOAD].presses) {
+    if (player->transition_level_in_direction || this_frame->input[INPUT_EDITOR_LOAD].presses) {
         load_level("test.txt", game_info, last_frame, *persistent_state);
     }
 

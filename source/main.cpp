@@ -595,7 +595,11 @@ int main(void) {
                     glUniform3f(rect_color_location, 1, 1, 1);
                     break;
                 case ENTITY_DOOR:
-                    glUniform3f(rect_color_location, .5, .2, .5);
+                    if (object.flags & DOOR_OPEN) {
+                        glUniform3f(rect_color_location, .5, .8, .5);    
+                    } else {
+                        glUniform3f(rect_color_location, .5, .2, .5);
+                    }
             }
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
