@@ -268,6 +268,8 @@ void update_grounded(Entity* object) {
                     object->facing = DIR_LEFT;
                 } else if (outside_left) {
                     object->facing = DIR_RIGHT;
+                } else if (object->facing == DIR_DOWN) {
+                    object->facing = DIR_RIGHT;
                 }
                 object->posx += object->move_speed * direction_to_int(object->facing);
             }
@@ -496,6 +498,7 @@ void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame
         Entity* obstacle = create_entity(frame);
         *obstacle = Entity{ type, move_rect(scaled_rect, camera.pos)};
         obstacle->facing = DIR_RIGHT;
+        obstacle->move_speed = .02f;
         drawing.active = false;
     }
 }
