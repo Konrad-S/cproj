@@ -625,6 +625,7 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
 
     if (player->transition_level_in_direction || this_frame->input[INPUT_EDITOR_LOAD].presses) {
         load_level("test.txt", game_info, last_frame, *persistent_state);
+        player->transition_level_in_direction = DIR_NONE;
     }
 
     this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities, *frame_state, this_frame->empty_entities, &this_frame->empty_entities_count, player);
