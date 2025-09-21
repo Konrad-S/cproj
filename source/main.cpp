@@ -553,19 +553,7 @@ int main(void) {
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        //
-        // draw text
-        glUseProgram(text_shader_program);
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glBindVertexArray(text_VAO);
 
-        if (game_info->input_text_count) {
-            game_info->display_text_chars_to_draw_count = text_to_char_coords(game_info->display_text, game_info->display_text_count, Vec2f{0, 0}, persistent);
-            glBindBuffer(GL_ARRAY_BUFFER, text_VBO);
-            glBufferData(GL_ARRAY_BUFFER, game_info->display_text_chars_to_draw_count * sizeof(Pos_Offset), arena_current(persistent), GL_STATIC_DRAW);
-        }
-
-        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, game_info->display_text_chars_to_draw_count);
         //
         // draw rects
         glUseProgram(shader_program);
@@ -603,6 +591,19 @@ int main(void) {
             }
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
+
+        //
+        // draw text
+        glUseProgram(text_shader_program);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindVertexArray(text_VAO);
+
+        if (game_info->input_text_count) {
+            game_info->display_text_chars_to_draw_count = text_to_char_coords(game_info->display_text, game_info->display_text_count, Vec2f{0, 0}, persistent);
+            glBindBuffer(GL_ARRAY_BUFFER, text_VBO);
+            glBufferData(GL_ARRAY_BUFFER, game_info->display_text_chars_to_draw_count * sizeof(Pos_Offset), arena_current(persistent), GL_STATIC_DRAW);
+        }
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, game_info->display_text_chars_to_draw_count);
 
         glfwSwapBuffers(window);
         global_mouse.left.presses = 0;

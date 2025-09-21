@@ -8,17 +8,24 @@ Health
     display
     handle player death?
 
-Draw arrays to draw all entites
-    pos, size, color in buffer
-        maybe depth for sorting
+word wrapping, currently just continues to the right
 
-build in sublime
+=========== editor features =========
+entity viewer
+    ui that displays selected entitys values
+    ability to edit those values
+magic numbers in config
+reload config while running
+    with entity viewer, make these numbers editable from a base 'game' entity
 
-
-=========== code features ==========
+=========== code/project features ==========
 
 operator overloading
     multiply vec2
+
+build in sublime
+
+order of drawing?
 
 possible change
     IDs
