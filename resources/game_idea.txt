@@ -104,3 +104,13 @@ Player attack
 Pickups
     many things can be picked up and thrown
     Monsters can carry things, and be disarmed to drop them
+
+
+
+=== SLUG HERDER ===
+
+vertical slice - proof of concept
+slow moving enemies
+enemies stay on their platforms
+player needs to move them, somewhere
+    since they are slugs, maybe to their shells?

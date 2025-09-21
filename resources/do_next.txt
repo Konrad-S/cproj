@@ -1,28 +1,24 @@
-do next:
-    save/load level in asset folder
+=========== game features =======
+save/load level in asset folder
+    save individual levels, instead of single test.txt
 
-    save file
-        entity type as string
 
-    directional attack
-        attack input + direction
+Health
+    player and monster
+    display
+    handle player death?
 
-    operator overloading
-        multiply vec2
+Draw arrays to draw all entites
+    pos, size, color in buffer
+        maybe depth for sorting
 
-    Health
-        player and monster
-        display
-        handle player death?
+build in sublime
 
-    Levels
 
-    Draw arrays to draw all entites
-        pos, size, color in buffer
-            maybe depth for sorting
+=========== code features ==========
 
-    build in sublime
-
+operator overloading
+    multiply vec2
 
 possible change
     IDs
