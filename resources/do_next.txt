@@ -3,7 +3,12 @@
 =========== game features =======
 save/load level in asset folder
     save individual levels, instead of single test.txt
-
+    saved level is based on level position
+        level position based on which direction the door you go through is
+            eg: level_1_1 go right -> level_1_2 go down -> level_0_2
+            can go negative
+            needs entity editor for doors
+                could do all doors go right for now
 
 Health
     player and monster
