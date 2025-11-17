@@ -1,3 +1,6 @@
+============ fixes ==========
+attacking an enemy that is overlapping an obstacle (by walking into it)
+    should ignore collision with the obstacle until it stops overlapping it
 
 
 =========== game features =======

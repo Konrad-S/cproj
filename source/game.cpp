@@ -4,32 +4,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-//
-// Arena
-u8* arena_current(Arena arena) {
-    return arena.data + arena.current;
-}
-
-u8* arena_current(Arena* arena) {
-    return arena->data + arena->current;
-}
-
-u8* arena_append(Arena* arena, u32 data_size) {
-    assert(arena->current + data_size <= arena->capacity);
-    u8* result = arena->data + arena->current;
-    arena->current += data_size;
-    memset(result, 0, data_size);
-    return result;
-}
-
-u32 arena_remaining(Arena arena) {
-    return arena.capacity - arena.current;
-}
-
-//
-// Game
-//
-
 u32 serialize_entity(Entity entity, Arena arena) {
     Rectf rect = entity.rect;
     u32 chars_written = snprintf((char* const)arena_current(arena), arena_remaining(arena), "Entity: type=%d posx=%g posy=%g radiusx=%g radiusy=%g move_speed=%g facing=%d\n", entity.type, rect.posx, rect.posy, rect.radiusx, rect.radiusy, entity.move_speed, entity.facing);
