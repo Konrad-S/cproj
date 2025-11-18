@@ -129,7 +129,7 @@ bool check_collided(Rectf a, Rectf b) {
 
 const f32 PLAYER_MOVE_SPEED = .1f;
 const f32 COLLISION_EPSILON = .001f;
-Rectf try_move_axis(Rectf player, f32 move_axis, Axis axis_offset, Entity* others, u32 others_count, Collision_Info* info) {
+Rectf try_move_axis(Rectf mover, f32 move_axis, Axis axis_offset, Entity* others, u32 others_count, Collision_Info* info) {
     if (move_axis != 0) {
         f32 sign;
         if (move_axis > 0) {
@@ -137,11 +137,11 @@ Rectf try_move_axis(Rectf player, f32 move_axis, Axis axis_offset, Entity* other
         } else {
             sign = -1.f;
         }
-        player.pos.a[axis_offset] += move_axis;
-        f32 most_extreme_edge = player.pos.a[axis_offset] + player.radius.a[axis_offset] * sign;
+        mover.pos.a[axis_offset] += move_axis;
+        f32 most_extreme_edge = mover.pos.a[axis_offset] + mover.radius.a[axis_offset] * sign;
         for (u32 i = 0; i < others_count; ++i) {
             Entity other = others[i];
-            if (other.type != ENTITY_STATIC || !check_collided(player, other.rect)) continue;
+            if (other.type != ENTITY_STATIC || !check_collided(mover, other.rect)) continue;
             f32 edge = other.pos.a[axis_offset] - other.radius.a[axis_offset] * sign;
             if (edge * sign < most_extreme_edge * sign) {
                 most_extreme_edge = edge;
@@ -150,9 +150,9 @@ Rectf try_move_axis(Rectf player, f32 move_axis, Axis axis_offset, Entity* other
                 info->other_index = i;
             }
         }
-        player.pos.a[axis_offset] = most_extreme_edge - (player.radius.a[axis_offset] + COLLISION_EPSILON) * sign;
+        mover.pos.a[axis_offset] = most_extreme_edge - (mover.radius.a[axis_offset] + COLLISION_EPSILON) * sign;
     }
-    return player;
+    return mover;
 }
 
 s8 direction_to_int(Direction dir) {
@@ -168,7 +168,7 @@ s8 direction_to_int(Direction dir) {
     }
 }
 
-Entity* create_entity(Frame_Info* frame) {
+Entity* create_entity(Game_Info* frame) {
     u16 found_index;
     if (frame->empty_entities_count) {
         found_index = frame->empty_entities[--frame->empty_entities_count];
@@ -181,7 +181,7 @@ Entity* create_entity(Frame_Info* frame) {
     return result;
 }
 
-void attack(Player* player, Frame_Info* frame) {
+void attack(Player* player, Game_Info* frame) {
     Entity* attack = create_entity(frame);
     *attack = {};
     attack->type = ENTITY_PLAYER_ATTACK;
@@ -190,7 +190,7 @@ void attack(Player* player, Frame_Info* frame) {
     player->attack = attack;
 }
 
-void throw_projectile(Rectf player, Frame_Info* frame) {
+void throw_projectile(Rectf player, Game_Info* frame) {
     Entity* proj = create_entity(frame);
     *proj = {};
     proj->type = ENTITY_PROJECTILE;
@@ -356,14 +356,13 @@ void player_door_overlap(Player* player, Entity* door) {
 
 
 const f32 CULL_OBJECT_IF_SMALLER = .2;
-u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result, Arena scratch, u16* empty_entities_result, u16* empty_entities_result_count, Player* player) {
-    Overlap_Info_List* overlaps = (Overlap_Info_List*)arena_append(&scratch, sizeof(Overlap_Info_List) * last_objects_count);
-    overlap_entities(last_objects, last_objects_count, overlaps, &scratch);
+u32 update_objects(Entity* objects, u32 objects_count, Arena scratch, u16* empty_entities_result, u16* empty_entities_result_count, Player* player) {
+    Overlap_Info_List* overlaps = (Overlap_Info_List*)arena_append(&scratch, sizeof(Overlap_Info_List) * objects_count);
+    overlap_entities(objects, objects_count, overlaps, &scratch);
 
     u32 monsters_alive = 0;
-    for (int i = 0; i < last_objects_count; ++i) {
-        Entity* object = result + i;
-        *object = last_objects[i];
+    for (int i = 0; i < objects_count; ++i) {
+        Entity* object = objects + i;
         if (object->radiusx < CULL_OBJECT_IF_SMALLER || object->radiusy < CULL_OBJECT_IF_SMALLER) {
             object->type = ENTITY_NONE;
         }
@@ -373,7 +372,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
                 while (overlap) {
                     switch (overlap->data.type) {
                         case ENTITY_DOOR:
-                            player_door_overlap(player, last_objects + overlap->data.other_index);
+                            player_door_overlap(player, objects + overlap->data.other_index);
                             break;
                     }
                     overlap = overlap->next;
@@ -386,7 +385,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
                 while (overlap) {
                     switch (overlap->data.type) {
                         case ENTITY_PLAYER_ATTACK:
-                            launch(object, { .1f * direction_to_int(last_objects[overlap->data.other_index].facing), .8f });
+                            launch(object, { .1f * direction_to_int(objects[overlap->data.other_index].facing), .8f });
                             break;
                         case ENTITY_SPIKE:
                             delete_entity(object);
@@ -402,7 +401,7 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
                     {
                         update_grounded(object);
                     } else {
-                        update_launched(object, last_objects, last_objects_count);
+                        update_launched(object, objects, objects_count);
                     }
                 }
                 break;
@@ -420,9 +419,9 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
                 break;
         }
     }
-    s64 frames_pointer_offset = (u8*)last_objects - (u8*)result;
-    for (int i = 0; i < last_objects_count; ++i) {
-        Entity* object = result + i;
+
+    for (int i = 0; i < objects_count; ++i) {
+        Entity* object = objects + i;
 
         if (object->type == ENTITY_DOOR) {
             if (monsters_alive == 0) object->flags |=  DOOR_OPEN;
@@ -434,10 +433,8 @@ u32 update_objects(Entity* last_objects, u32 last_objects_count, Entity* result,
             object->standing_on = NULL;
             continue;
         }
-        // Point to this frames objects instead of last. The pointers relative position is the same.
-        object->standing_on = (Entity*)((u8*)object->standing_on - frames_pointer_offset);
     }
-    return last_objects_count;
+    return objects_count;
 }
 
 Rectf points_to_rect(Vec2f a, Vec2f b) {
@@ -457,7 +454,7 @@ Rectf move_rect(Rectf r, Vec2f dist) {
     return Rectf{ r.posx + dist.x, r.posy + dist.y, r.radius };
 }
 
-void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Frame_Info* frame, Entity_Type type) {
+void draw_obstacle(Drawing_Obstacle& drawing, Mouse* mouse, Camera camera, Game_Info* frame, Entity_Type type) {
     if (mouse->right.presses) {
         drawing.active = false;
         return;
@@ -498,10 +495,10 @@ Camera update_camera(Camera camera, Input* input) {
     return camera;
 }
 
-void init_game_state(Game_Info* game_info, Frame_Info* last_frame) {
+void init_game_state(Game_Info* game_info) {
     f32 scale = .05f;
-    last_frame->player.e = last_frame->entities;
-    last_frame->camera.scale = scale * 2;
+    game_info->player.e = game_info->entities;
+    game_info->camera.scale = scale * 2;
 
     game_info->display_text_count = 0;
     game_info->display_text_chars_to_draw_count = 0;
@@ -523,9 +520,9 @@ void init_game_state(Game_Info* game_info, Frame_Info* last_frame) {
 #define ENTITY_MOVE_SPEED " move_speed="
 #define ENTITY_FACING " facing="
 #define LENGTH(s) (sizeof(s) - 1)
-void parse_savefile(char* text_start, u32 text_size, Frame_Info* frame) {
-    frame->entities_count = 0;
-    frame->empty_entities_count = 0;
+void parse_savefile(char* text_start, u32 text_size, Game_Info* game_info) {
+    game_info->entities_count = 0;
+    game_info->empty_entities_count = 0;
     u32 count = 0;
     char* text = text_start;
     u32 start_size = LENGTH(ENTITY_START);
@@ -539,7 +536,7 @@ void parse_savefile(char* text_start, u32 text_size, Frame_Info* frame) {
             f32 radiusy = strtof(text + LENGTH(ENTITY_RADIUSY), &text);
             f32 move_speed = strtof(text + LENGTH(ENTITY_MOVE_SPEED), &text);
             Direction facing = (Direction)strtol(text + LENGTH(ENTITY_FACING), &text, 10);
-            Entity* result = create_entity(frame);
+            Entity* result = create_entity(game_info);
             *result = Entity{ type, Rectf{ posx, posy, radiusx, radiusy }, move_speed, facing};
         }
         while (true) {
@@ -551,23 +548,18 @@ void parse_savefile(char* text_start, u32 text_size, Frame_Info* frame) {
     }
 }
 
-void load_level(char* level_path, Game_Info* game_info, Frame_Info* frame, Arena scratch) {
+void load_level(char* level_path, Game_Info* game_info, Arena scratch) {
     u32 file_size = game_info->platform_read_entire_file(scratch, level_path);
     char* file_content = (char*)arena_current(scratch);
-    parse_savefile(file_content, file_size, frame);
+    parse_savefile(file_content, file_size, game_info);
 
-    frame->player.transition_level_in_direction = DIR_NONE;
+    game_info->player.transition_level_in_direction = DIR_NONE;
 }
 
 #define ATTACK_DURATION 20
-void update_player(Player* player, Player* last_player) {
-    // Point to this frames entities instead of last. The pointers relative position is the same.
-    s64 frames_pointer_offset = (u8*)last_player - (u8*)player;
-    if (player->e)      player->e      = (Entity*)((u8*)player->e      - frames_pointer_offset);
-    if (player->attack) player->attack = (Entity*)((u8*)player->attack - frames_pointer_offset);
-
+void update_player(Player* player) {
     if (player->attack) {
-        u32 frames_active = last_player->attack_frames;
+        u32 frames_active = player->attack_frames;
         if (frames_active > ATTACK_DURATION) {
             delete_entity(player->attack);
             player->attack = NULL;
@@ -578,18 +570,17 @@ void update_player(Player* player, Player* last_player) {
     }
 }
 
-bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state) {
+bool update_game(Arena* frame_state, Arena* persistent_state) {
     Game_Info* game_info = (Game_Info*)persistent_state->data;
-    Frame_Info* this_frame = (Frame_Info*)frame_state->data;
     if (!game_info->game_state_is_initialiezed) {
-        init_game_state(game_info, last_frame);
+        init_game_state(game_info);
         
-        load_level("test.txt", game_info, last_frame, *persistent_state);
+        load_level("test.txt", game_info, *persistent_state);
     }
-    Player* player = &this_frame->player;
-    *player = last_frame->player;
+    Player* player = &game_info->player;
+    *player = game_info->player;
 
-    this_frame->camera = update_camera(last_frame->camera, this_frame->input);
+    game_info->camera = update_camera(game_info->camera, game_info->input);
     
     for (int i = 0; i < game_info->input_text_count; ++i) {
         u32 count = game_info->display_text_count++;
@@ -597,23 +588,24 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         game_info->display_text[count] = game_info->input_text[i];
     }
 
-    if (player->transition_level_in_direction || this_frame->input[INPUT_EDITOR_LOAD].presses) {
-        load_level("test.txt", game_info, last_frame, *persistent_state);
+    if (player->transition_level_in_direction || game_info->input[INPUT_EDITOR_LOAD].presses) {
+        load_level("test.txt", game_info, *persistent_state);
         player->transition_level_in_direction = DIR_NONE;
     }
 
-    this_frame->entities_count = update_objects(last_frame->entities, last_frame->entities_count, this_frame->entities, *frame_state, this_frame->empty_entities, &this_frame->empty_entities_count, player);
-    update_player(player, &last_frame->player);
-    if (!player->attack && this_frame->input[INPUT_THROW].presses) {
-        //throw_projectile(player->rect, game_info, this_frame);
-        attack(player, this_frame);
+    game_info->entities_count = update_objects(game_info->entities, game_info->entities_count, *frame_state, game_info->empty_entities, &game_info->empty_entities_count, player);
+    update_player(player);
+    if (!player->attack && game_info->input[INPUT_THROW].presses) {
+        //throw_projectile(player->rect, game_info, game_info);
+        attack(player, game_info);
     }
     
-    Vec2f player_delta = get_player_pos_delta(player, this_frame->input, last_frame->collision_info);
-    player->e->rect = try_move_axis(player->e->rect, player_delta.x, AXIS_X, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
-    player->e->rect = try_move_axis(player->e->rect, player_delta.y, AXIS_Y, this_frame->entities, this_frame->entities_count, &this_frame->collision_info);
+    Vec2f player_delta = get_player_pos_delta(player, game_info->input, game_info->collision_info);
+    game_info->collision_info.sides_touched = 0;
+    player->e->rect = try_move_axis(player->e->rect, player_delta.x, AXIS_X, game_info->entities, game_info->entities_count, &game_info->collision_info);
+    player->e->rect = try_move_axis(player->e->rect, player_delta.y, AXIS_Y, game_info->entities, game_info->entities_count, &game_info->collision_info);
 
-    if (this_frame->input[INPUT_EDITOR_CYCLE_DRAW].presses) {
+    if (game_info->input[INPUT_EDITOR_CYCLE_DRAW].presses) {
         switch (game_info->currently_drawing) {
             case ENTITY_STATIC:
                 game_info->currently_drawing = ENTITY_MONSTER;
@@ -632,14 +624,14 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
                 break;
         }
     }
-    draw_obstacle(game_info->drawing, this_frame->mouse, this_frame->camera, this_frame, game_info->currently_drawing);
-    erase_obstacle(this_frame->mouse, this_frame->entities, this_frame->entities_count, this_frame->camera);
+    draw_obstacle(game_info->drawing, game_info->mouse, game_info->camera, game_info, game_info->currently_drawing);
+    erase_obstacle(game_info->mouse, game_info->entities, game_info->entities_count, game_info->camera);
 
-    if (this_frame->input[INPUT_EDITOR_SAVE].presses) {
+    if (game_info->input[INPUT_EDITOR_SAVE].presses) {
         u32 persistent_reset = persistent_state->current;
         u32 total_length = 0;
-        for (int i = 0; i < this_frame->entities_count; ++i) {
-            Entity object = this_frame->entities[i];
+        for (int i = 0; i < game_info->entities_count; ++i) {
+            Entity object = game_info->entities[i];
             if (!object.type) continue;
             u32 serialized_length = serialize_entity(object, *persistent_state);
             total_length += serialized_length;
@@ -649,6 +641,6 @@ bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_s
         game_info->platform_write_entire_file("test.txt", (const char*)arena_current(*persistent_state), total_length);
     }
 
-    assert(this_frame->entities_count < ENTITIES_CAPACITY);
+    assert(game_info->entities_count < ENTITIES_CAPACITY);
     return true;
 }

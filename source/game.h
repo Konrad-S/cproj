@@ -128,20 +128,6 @@ struct Camera {
     f32 scale;
 };
 
-struct Frame_Info {
-    Player  player;
-    Input   input[INPUT_ENUM_COUNT];
-    Camera  camera;
-    Mouse*  mouse;
-    Collision_Info collision_info;
-#define ENTITIES_CAPACITY 2000
-    Entity  entities[ENTITIES_CAPACITY];
-    u32     entities_count;
-    s32     frame_pointer_delta;
-    u16     empty_entities[ENTITIES_CAPACITY];
-    u16     empty_entities_count;
-};
-
 typedef u32  (*Platform_Read_Entire_File)(Arena, const char*);
 typedef bool (*Platform_Write_Entire_File)(const char*, const char*, u32);
 
@@ -157,11 +143,23 @@ struct Game_Info {
     u8      input_text_count;
     Drawing_Obstacle drawing;
     Entity_Type currently_drawing;
+
+    Player  player;
+    Input   input[INPUT_ENUM_COUNT];
+    Camera  camera;
+    Mouse*  mouse;
+    Collision_Info collision_info;
+#define ENTITIES_CAPACITY 2000
+    Entity  entities[ENTITIES_CAPACITY];
+    u32     entities_count;
+    s32     frame_pointer_delta;
+    u16     empty_entities[ENTITIES_CAPACITY];
+    u16     empty_entities_count;
 };
 
 //Rectf get_updated_player(Rectf last_player, Input input);
 extern "C" {
-    __declspec(dllexport) bool update_game(Arena* frame_state, Frame_Info* last_frame, Arena* persistent_state);
+    __declspec(dllexport) bool update_game(Arena* frame_state, Arena* persistent_state);
 }
 
 #endif // GAME_H

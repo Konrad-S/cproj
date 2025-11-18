@@ -7,7 +7,7 @@
 
 #include "game.cpp"
 
-typedef bool (*Update_Game)(Arena*, Frame_Info*, Arena*);
+typedef bool (*Update_Game)(Arena*, Arena*);
 
 // Error callback function
 void error_callback(int error, const char* description) {
@@ -417,17 +417,13 @@ int main(void) {
     //
     // Create memory arenas
     Arena persistent;
-    persistent.data = (u8*)malloc(PERSISTENT_ARENA_SIZE + FRAME_ARENA_SIZE*2); // 2 MB
+    persistent.data = (u8*)malloc(PERSISTENT_ARENA_SIZE + FRAME_ARENA_SIZE); // 1.5 MB
     persistent.capacity = PERSISTENT_ARENA_SIZE;
     persistent.current = 0;
-    Arena frame_arena_0;
-    Arena frame_arena_1;
-    frame_arena_0.data = persistent.data + persistent.capacity;
-    frame_arena_0.capacity = FRAME_ARENA_SIZE;
-    frame_arena_0.current = 0;
-    frame_arena_1.data = frame_arena_0.data + frame_arena_0.capacity;
-    frame_arena_1.capacity = FRAME_ARENA_SIZE;
-    frame_arena_1.current = 0;
+    Arena frame_arena;
+    frame_arena.data = persistent.data + persistent.capacity;
+    frame_arena.capacity = FRAME_ARENA_SIZE;
+    frame_arena.current = 0;
     //
     // Load shaders
     u32 shader_program;
@@ -486,12 +482,6 @@ int main(void) {
     GLuint camera_location = glGetUniformLocation(shader_program, "camera");
     GLuint color_location = glGetUniformLocation(shader_program, "color");
     GLuint rect_color_location = glGetUniformLocation(shader_program, "rect_color");
-    //
-    // Setup game state
-    frame_arena_0.current += sizeof(Frame_Info);
-    frame_arena_1.current += sizeof(Frame_Info);
-    Frame_Info* this_frame = (Frame_Info*)frame_arena_0.data;
-    this_frame->frame_pointer_delta = FRAME_ARENA_SIZE;
     // Game_Info is stored at start of the persistent arena.
     Game_Info* game_info = (Game_Info*)arena_append(&persistent, sizeof(Game_Info));
     game_info->platform_read_entire_file = read_entire_file;
@@ -523,17 +513,7 @@ int main(void) {
             if (!game_code.valid) return -1;
         }
 
-        Frame_Info* last_frame = this_frame;
-        Arena* frame_arena;
-        if (even_frame) {
-            frame_arena = &frame_arena_0;
-        }
-        else {
-            frame_arena = &frame_arena_1;
-        }
-        clear_arena(frame_arena);
-        frame_arena->current += sizeof(Frame_Info);
-        this_frame = (Frame_Info*)frame_arena->data;
+        clear_arena(&frame_arena);
 #define MIN_FRAME_TIME .0016f
 
         f32 current_time = glfwGetTime() - last_time;
@@ -544,11 +524,11 @@ int main(void) {
         last_time = current_time;
 
 
-        transfer_input(this_frame->input);
+        transfer_input(game_info->input);
 
         game_info->input_text_count = global_input_text_count;
-        this_frame->mouse        = &global_mouse;
-        game_wants_to_keep_running = game_code.update_function(frame_arena, last_frame, &persistent);
+        game_info->mouse        = &global_mouse;
+        game_wants_to_keep_running = game_code.update_function(&frame_arena, &persistent);
 
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
@@ -557,12 +537,12 @@ int main(void) {
         //
         // draw rects
         glUseProgram(shader_program);
-        glUniform2f(camera_location, this_frame->camera.posx, this_frame->camera.posy);
-        glUniform2f(world_scale_location, 2/(screen_width*this_frame->camera.scale), 2/(screen_height*this_frame->camera.scale));
+        glUniform2f(camera_location, game_info->camera.posx, game_info->camera.posy);
+        glUniform2f(world_scale_location, 2/(screen_width*game_info->camera.scale), 2/(screen_height*game_info->camera.scale));
         glBindVertexArray(rect_VAO);
         
-        for (int i = 0; i < this_frame->entities_count; i++) {
-            Entity object = this_frame->entities[i];
+        for (int i = 0; i < game_info->entities_count; i++) {
+            Entity object = game_info->entities[i];
             if (!object.type) continue;
             Rectf rect = object.rect;
             glUniform2f(offset_location, rect.posx, rect.posy);
