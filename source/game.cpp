@@ -30,7 +30,7 @@ Vec2f move_camera(Vec2f last_pos, Input* input) {
 const f32 JUMP_VELOCITY = .2f;
 const f32 GRAVITY = .005f;
 const f32 TERMINAL_VELOCITY = 1.5f;
-Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_info) {
+Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info* last_info) {
     Entity* entity = player->e;
     Vec2f pos = {};
     if (input[INPUT_RIGHT].down) {
@@ -41,7 +41,7 @@ Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_inf
         pos.x -= .1f;
         entity->facing = DIR_LEFT;
     }
-    entity->grounded = last_info.sides_touched & DIR_DOWN;
+    entity->grounded = last_info->sides_touched & DIR_DOWN;
 
     if (entity->grounded) {
         entity->velocity.y = 0;
@@ -55,6 +55,7 @@ Vec2f get_player_pos_delta(Player* player, Input* input, Collision_Info last_inf
     if (entity->velocity.y < -TERMINAL_VELOCITY) entity->velocity.y = -TERMINAL_VELOCITY;
     pos.y += entity->velocity.y;
     
+    last_info->sides_touched = 0;
     return pos;
 }
 
@@ -577,6 +578,8 @@ bool update_game(Arena* frame_state, Arena* persistent_state) {
         
         load_level("test.txt", game_info, *persistent_state);
     }
+    game_info->empty_entities_count = 0;
+
     Player* player = &game_info->player;
     *player = game_info->player;
 
@@ -600,8 +603,8 @@ bool update_game(Arena* frame_state, Arena* persistent_state) {
         attack(player, game_info);
     }
     
-    Vec2f player_delta = get_player_pos_delta(player, game_info->input, game_info->collision_info);
-    game_info->collision_info.sides_touched = 0;
+    Vec2f player_delta = get_player_pos_delta(player, game_info->input, &game_info->collision_info);
+
     player->e->rect = try_move_axis(player->e->rect, player_delta.x, AXIS_X, game_info->entities, game_info->entities_count, &game_info->collision_info);
     player->e->rect = try_move_axis(player->e->rect, player_delta.y, AXIS_Y, game_info->entities, game_info->entities_count, &game_info->collision_info);
 

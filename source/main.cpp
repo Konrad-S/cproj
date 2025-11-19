@@ -4,6 +4,10 @@
 
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#include "backends/imgui_impl_opengl3.h"
+#undef assert
 
 #include "game.cpp"
 
@@ -346,6 +350,19 @@ int main(void) {
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    //
+    // Setup imgui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    const char* glsl_version = "#version 130";
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
     //
     // Setup openGL buffers 
     unsigned int rect_VAO;
@@ -528,7 +545,18 @@ int main(void) {
 
         game_info->input_text_count = global_input_text_count;
         game_info->mouse        = &global_mouse;
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
         game_wants_to_keep_running = game_code.update_function(&frame_arena, &persistent);
+
+        ImGui::Begin("Entity info");
+        ImGui::Text("Empty entities: %d", game_info->empty_entities_count);
+        ImGui::End();
+
+        ImGui::Render();
 
         float time = glfwGetTime();
         glClearColor(.2f, .5f, .5f, 1.0f);
@@ -584,6 +612,9 @@ int main(void) {
             glBufferData(GL_ARRAY_BUFFER, game_info->display_text_chars_to_draw_count * sizeof(Pos_Offset), arena_current(persistent), GL_STATIC_DRAW);
         }
         glDrawArraysInstanced(GL_TRIANGLES, 0, 6, game_info->display_text_chars_to_draw_count);
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 
         glfwSwapBuffers(window);
         global_mouse.left.presses = 0;
