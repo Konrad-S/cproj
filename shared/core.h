@@ -39,6 +39,33 @@ struct Vec2f {
     };
 };
 
+//
+// Dynamic Array
+struct Pointers {
+    void** data;
+    u32 count;
+    u32 capacity;
+};
+
+#define LIST_APPEND(list, item)\
+    do{\
+        if (list.count >= capacity){\
+            if (list.capacity == 0) list.capacity = 8;\
+            else list.capacity *= 2;\
+            list.data = realloc(list.data, list.capacity*sizeof(*list.data));\
+        }\
+        list.data[list.count] = item;\
+    } while(0)\
+
+
+#define LIST_PUSH(list, item)\
+    do{\
+        if (list.count >= list.capacity){\
+            assert(list.capacity != 0);\
+            list.count = list.capacity--;\
+        }\
+        list.data[list.count++] = item;\
+    } while(0)\
 
 //
 // Arena
